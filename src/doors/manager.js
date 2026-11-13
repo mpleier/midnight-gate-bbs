@@ -463,69 +463,87 @@ class DoorManager {
       let finished = false;
       let timer = null;
       let sock = null;
+      let bridge = null;
       const done = () => {
         if (finished) return;
         finished = true;
         if (timer) clearTimeout(timer);
         try {
           sock?.destroy();
+          bridge?.close();
         } catch {}
         term.rawHandler = null;
         term.reset();
         term.write('\r\n');
         resolve();
       };
-      // A serial door talks over a TCP bridge, not stdin: wait for DOSBox to
-      // start listening, then splice the socket onto the caller's terminal.
+      // A serial door talks over a TCP bridge. DOSBox's nullmodem is set up as a
+      // server, but in practice it dials out to whoever is listening on that port,
+      // so the board listens and DOSBox connects.
       if (isSerial) {
         const target = port || Number(config.get('doors.tcpBridgePort')) || 2444;
         let sawData = false;
-        const connect = (tries = 40) => {
-          if (finished) return;
-          sock = require('node:net').connect(target, '127.0.0.1');
-          sock.once('connect', () => {
-            this.pushLog(`${door.name} serial bridge up on ${target}`);
-            sock.on('data', (b) => {
-              if (!sawData) {
-                sawData = true;
-                if (timer) clearTimeout(timer);
-              }
-              term.writeRaw(b.toString('latin1'));
-            });
-            // a DOS door that never writes to COM1 has not been set up for a
-            // serial BBS yet (LORD, for one, wants LORDCFG run first)
-            timer = setTimeout(() => {
-              if (sawData || finished) return;
-              term.writeRaw(String.fromCharCode(13, 10) + String.fromCharCode(13, 10));
-              const hint = [
-                '  This game started but sent nothing to COM1.',
-                '  A DOS door has to be told to use the serial port before it will',
-                '  talk to a caller: run its setup program once (for LORD that is',
-                '  LORDCFG.EXE, option (S)etup Nodes -> COM1, 14400, DOOR.SYS).',
-                '  Press any key to go back.',
-              ];
-              for (const line of hint) term.write(line + String.fromCharCode(13, 10));
-            }, 6000);
-            sock.on('close', () => setTimeout(done, 400));
-            sock.on('error', () => {});
-            term.rawHandler = (chunk) => {
-              try {
-                sock.write(String(chunk), 'binary');
-              } catch {}
-            };
-          });
-          sock.once('error', () => {
-            try {
-              sock.destroy();
-            } catch {}
-            if (tries > 0 && !finished) setTimeout(() => connect(tries - 1), 250);
-            else if (!finished) {
-              s.error(term, 'The door never opened its serial port. Check the DOSBox log.');
-              done();
+        let probeTail = '';
+        let carry = '';
+        const net = require('node:net');
+        bridge = net.createServer((s) => {
+          sock = s;
+          this.pushLog(`${door.name} serial bridge up on ${target}`);
+          s.on('data', (b) => {
+            if (!sawData) {
+              sawData = true;
+              if (timer) clearTimeout(timer);
             }
+            const chunk = b.toString('latin1');
+            // a screen scraper asks the terminal who it is before handing over;
+            // xterm and telnet clients are inconsistent, so the bridge answers
+            probeTail = (probeTail + chunk).slice(-32);
+            if (probeTail.includes('[6n')) {
+              probeTail = probeTail.split('[6n').join('');
+              try { s.write('[1;1R'); } catch {}
+            }
+            if (probeTail.includes('[c')) {
+              probeTail = probeTail.split('[c').join('');
+              try { s.write('[?1;0c'); } catch {}
+            }
+            // DOSBox's nullmodem opens with 0xFF 0x00 sync pairs; they are not
+            // terminal output and show up as rubbish glyphs if passed through.
+            // A pair can straddle two packets, so hold back a trailing 0xFF.
+            const FF = String.fromCharCode(255);
+            let data = carry + chunk;
+            carry = '';
+            if (data.endsWith(FF)) {
+              carry = FF;
+              data = data.slice(0, -1);
+            }
+            term.writeRaw(data.split(FF + String.fromCharCode(0)).join(''));
           });
-        };
-        setTimeout(() => connect(), 600);
+          s.on('close', () => setTimeout(done, 400));
+          s.on('error', () => {});
+          term.rawHandler = (chunk) => {
+            try {
+              s.write(String(chunk), 'binary');
+            } catch {}
+          };
+          try { bridge.close(); } catch {}
+        });
+        bridge.on('error', (e) => {
+          s.error(term, 'Serial bridge failed: ' + e.message);
+          done();
+        });
+        bridge.listen(target, '127.0.0.1', () => this.pushLog(`${door.name} waiting for COM1 on ${target}`));
+        timer = setTimeout(() => {
+          if (sawData || finished) return;
+          term.writeRaw(String.fromCharCode(13, 10) + String.fromCharCode(13, 10));
+          const hint = [
+            '  This game started but sent nothing to COM1.',
+            '  A DOS door has to be told to use the serial port before it will',
+            '  talk to a caller: run its setup program once (for LORD that is',
+            '  LORDCFG.EXE, option (S)etup Nodes -> COM1, 14400, DOOR.SYS).',
+            '  Press any key to go back.',
+          ];
+          for (const line of hint) term.write(line + String.fromCharCode(13, 10));
+        }, 30000);
       } else {
         term.rawHandler = (chunk) => {
           try {

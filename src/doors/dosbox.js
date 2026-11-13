@@ -49,6 +49,15 @@ async function runDos(manager, term, door, installDir, dosboxExe) {
       manager.pushLog('drop file failed: ' + e.message);
     }
   }
+  // Doorway's SYS mode reads DOOR.SYS from its working directory to learn who the
+  // caller is and how long they have left, whatever the door itself prefers
+  if (fs.existsSync(path.join(runDir, 'DOORWAY.EXE'))) {
+    try {
+      writeDrop(term, 'DOOR.SYS', runDir);
+    } catch (e) {
+      manager.pushLog('doorway drop file failed: ' + e.message);
+    }
+  }
 
   const port = 2500 + (Number(term.node) || 1) * 10 + Math.floor(Math.random() * 8);
   const conf = path.join(work, 'dosbox.conf');
@@ -84,7 +93,20 @@ async function runDos(manager, term, door, installDir, dosboxExe) {
   const isBatch = /\.bat$/i.test(runName);
   const node = String(term.node || 1);
   const extra = Array.isArray(door.args) && door.args.length ? door.args.map(String) : isBatch ? [node] : [];
-  lines.push([runName, ...extra].join(' '), 'exit', '');
+  const doorLine = [runName, ...extra].join(' ');
+
+  // A door that writes ANSI to the screen instead of down the FOSSIL needs a
+  // screen-scraper between it and the caller. Doorway does that job (/V:D is
+  // "direct screen writes"), but it can only exec an EXE or COM, so batch entry
+  // points go through COMMAND.COM /C.
+  if (fs.existsSync(path.join(runDir, 'DOORWAY.EXE')) && fs.existsSync(path.join(runDir, 'COMMAND.COM'))) {
+    const prog = isBatch ? 'COMMAND.COM /C ' + doorLine : doorLine;
+    lines.push('DOORWAY SYSF /V:D /P:' + prog);
+    manager.pushLog('doorway: ' + prog);
+  } else {
+    lines.push(doorLine);
+  }
+  lines.push('exit', '');
   fs.writeFileSync(conf, lines.join('\r\n'));
 
   manager.pushLog('dosbox: ' + runName + ' on COM1 port ' + port);

@@ -116,29 +116,44 @@ Verified here: archive extracts, installs, appears on the menu, LORDCFG writes a
 working `NODE1.DAT`, and DOSBox boots the game to its title screen ("Legend Of the
 Red Dragon — Node 1", 59:34 on the clock).
 
-**Known gap.** A FOSSIL driver is now part of the door: `BNU 1.70` (`BNU.COM`,
-`BNU.SYS`, docs) sits in `legord/`, the runner loads it with `BNU /F` before the
-game, and `NODE1.DAT` reads `FOSSIL`, `COMPORT 1`, `NODIRECT`, `BBSDROP C:\BBS`.
-BNU reports itself resident ("1 Port(s) available"); DOSBox's nullmodem carries
-bytes (`echo SERIAL-TEST > COM1` arrives on the socket); and the bridge connects
-when LORD starts — but LORD paints DOSBox's own screen and sends nothing over
-COM1. Until that is solved the door is installed with `enabled: false`.
+**FOSSIL first.** `BNU 1.70` (`BNU.COM`, `BNU.SYS`, docs) sits in `legord/`, the
+runner loads it with `BNU /F` before the game, and `NODE1.DAT` reads `FOSSIL`,
+`COMPORT 1`, `NODIRECT`, `BBSDROP C:\BBS`. LORD on its own still paints DOSBox's
+own screen and sends nothing down COM1 — a FOSSIL only carries the serial
+channel, not screen output — which is why the screen scraper below exists.
 
-**Screen scraping (Doorway).** A FOSSIL only carries the serial channel; a door
-that writes ANSI to the screen needs a shim between it and the caller. Doorway
-2.32 (`DOORWAY.EXE`, `ENGLISH.LAN`, docs) is installed in `legord/` for that,
-driven as `DOORWAY COM1F /V:D /P:WRAP.BAT` with the game in local mode
-(`COM0`/baud `0` in `DORINFO1.DEF`, `WRAP.BAT` calling `START.BAT <node>`).
+**It runs.** The chain that finally works, end to end, for a caller on the web
+terminal or plain telnet:
 
-That much is proven: Doorway's own banner — 1111 bytes, including its ANSI
-cursor-position query — reaches a socket client through BNU, the emulated UART
-and the bridge. Doorway then returns to host *without launching* the program
-(`WRAP.BAT` never runs, no marker file is written), so the handover is the open
-problem. Two things to try: answer its terminal identification properly
-(`ESC[6n` → `ESC[1;1R`, `ESC[c` → `ESC[?1;0c`) instead of ignoring it, and build
-a real `DOORWAY.CFG` with `DWCONFIG.EXE` rather than trusting command-line
-switches alone. Note Doorway is shareware: unregistered it gives each caller ten
-minutes and prints "REGISTERED TO: [UNREGISTERED COPY!]".
+```
+DOSBox-X  serial1=nullmodem (the board listens, DOSBox dials out)
+BNU /F    FOSSIL driver, resident
+DOORWAY SYSF /V:D /P:COMMAND.COM /C START.BAT <node>
+```
+
+with the game in local mode (`COM0` / baud `0` in `DORINFO1.DEF`) and a `DOOR.SYS`
+beside it for Doorway to read. Doorway scrapes the game's screen and sends ANSI
+down the FOSSIL; the board answers its terminal-identification queries
+(`ESC[6n` → `ESC[1;1R`, `ESC[c` → `ESC[?1;0c`) because xterm and telnet clients
+are inconsistent about it.
+
+Three things cost the most time and are worth remembering:
+
+1. **LORD refuses to start as `LORD.EXE`** — it demands `START.BAT <node>`.
+2. **Doorway cannot exec a `.BAT`.** It printed its banner, then "RETURNING TO
+   HOST" and never ran the door; wrapping the batch in `COMMAND.COM /C` fixed it.
+3. **DOSBox's nullmodem dials out**, whatever `server:` suggests. The board has
+   to *listen* on the port and accept DOSBox's connection; the opposite
+   arrangement produced six sync bytes and silence.
+
+Verified: `Legend Of The Red Dragon — Compiled 5/24/99: VERSION 4.02a`,
+`REGISTERED, Thanks to eXo!`, the warrior menu, and the join prompt, over both
+transports.
+
+**Doorway is shareware.** Unregistered it caps each caller at ten minutes and
+prints `Registered to: [UNREGISTERED COPY!]` to them. That is the timer callers
+see. Registering Doorway (PC Micro) removes both, and `doors/dosbox.js` needs no
+change when you do.
 
 ## Troubleshooting
 
