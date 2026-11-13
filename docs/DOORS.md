@@ -86,12 +86,37 @@ run them, in order of effort:
 Time limits are enforced: the runner kills the child when the caller's remaining minutes
 run out or the carrier drops.
 
+## DOS doors under DOSBox
+
+`src/doors/dosbox.js` runs an installed DOS door for real: each call gets a scratch
+copy of the door directory (so per-node data files cannot collide), a drop file in the
+directory the game runs from, and a generated `dosbox.conf` whose `serial1` is a
+`nullmodem` waiting on a port. Once DOSBox is listening, that socket is spliced onto
+the caller's terminal, so the game talks to the caller through COM1 exactly as it
+would through a FOSSIL driver. Set `doors.dosboxPath` (or install DOSBox-X / DOSBox
+0.74 in a standard location and it is found automatically).
+
+DOSBox's own chatter goes to `doors/tmp/<run>/dosbox.log` rather than the caller's
+screen.
+
+**One-time setup is still yours.** Most DOS doors ship without a configuration file
+and have to be told which port and speed to use. For Legend of the Red Dragon that
+means running `LORDCFG.EXE` once in the door directory: `(S)etup Nodes`, COM1, the
+locked baud rate, drop file `DOOR.SYS`. Until you do, the game starts under DOSBox and
+writes nothing to COM1 — the board says so on screen instead of showing a blank
+screen, and the sysop log records `serial bridge up` with no traffic.
+
 ## Troubleshooting
 
 - Door not in the menu: check `enabled`, and the caller's level versus `minLevel`.
 - "This door is missing its door.js": the zip had no `door.js` but was detected as
   native (usually a stray empty file). Reinstall or set `type` and `exec` by hand.
+- "This game started but sent nothing to COM1": the door is running but has not been
+  configured for serial I/O — run its setup program once (see above).
+- A zip installs as one zero-byte file instead of a directory: that was a bug in the
+  ZIP reader, fixed — directory entries now create directories.
 - Garbage on screen from a DOS door: the program is writing CP437 through a pipe; the
-  terminal expects UTF-8. Native doors avoid this entirely.
+  terminal expects UTF-8. The serial bridge writes raw bytes instead, which the web
+  terminal renders as CP437.
 - The scanner ignores a zip: only files ending `.zip` with a `PK` header are considered;
   `.rar`/`.7z`/`.arj` must be converted first.

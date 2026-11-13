@@ -36,6 +36,16 @@ function readTextSafe(file) {
   }
 }
 
+function prettyName(base) {
+  return String(base || '')
+    .replace(/\.(zip|rar|7z)$/i, '')
+    .replace(/[_\-.]+/g, ' ')
+    .replace(/\b(dos|en|eng|english|full|shareware|registered|v?\d+(\.\d+)?)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
 function sniffMeta(dir, fallbackName) {
   const files = [];
   const walk = (d, depth = 0) => {
@@ -72,10 +82,39 @@ function sniffMeta(dir, fallbackName) {
     const am = t.match(/(?:author|written by|programmed by|copyright \(c\)|\(c\))\s*[:\-]?\s*([A-Za-z0-9 .'\-]{3,40})/i);
     if (am) author = am[1].trim();
   }
-  const exe = files.find((f) => /\.exe$/i.test(f) && !/(install|setup|config|readme|order|register)/i.test(f));
-  const bat = files.find((f) => /\.bat$/i.test(f) && !/(install|setup)/i.test(f));
+  // DOS doors are launched by their BAT wrapper; the EXE is the game itself and
+  // LORDCFG.EXE / SETUP.EXE must never be picked as the entry point
+  const bat = files.find((f) => /\.bat$/i.test(f) && /(start|run|door|play|go)/i.test(f)) || files.find((f) => /\.bat$/i.test(f) && !/(install|setup)/i.test(f));
+  const exe = files.find((f) => /\.exe$/i.test(f) && !/(install|setup|cfg|config|readme|order|register|uninst)/i.test(f));
   const js = files.find((f) => /(^|[\\/])door\.js$/i.test(f));
-  return { name, description: description.slice(0, 160), author, exe: exe ? path.relative(dir, exe) : null, bat: bat ? path.relative(dir, bat) : null, js: js ? path.relative(dir, js) : null };
+  return {
+    name,
+    description: description.slice(0, 160),
+    author,
+    exe: exe ? path.relative(dir, exe) : null,
+    bat: bat ? path.relative(dir, bat) : null,
+    js: js ? path.relative(dir, js) : null,
+  };
+}
+
+function pickPort(cmd) {
+  const m = String(cmd || '').match(/port:(\d+)/i);
+  return m ? Number(m[1]) : 0;
+}
+
+// DOSBox is not a dependency: use the configured path, or find a normal install
+function findDosbox() {
+  const configured = config.get('doors.dosboxPath');
+  if (configured && fs.existsSync(configured)) return configured;
+  const candidates = [
+    'C:/Program Files (x86)/DOSBox-0.74-3/DOSBox.exe',
+    'C:/Program Files/DOSBox-0.74-3/DOSBox.exe',
+    'C:/Program Files/DOSBox-X/dosbox-x.exe',
+    'C:/Program Files (x86)/DOSBox-X/dosbox-x.exe',
+    'C:/Program Files/DOSBox Staging/dosbox.exe',
+  ];
+  for (const c of candidates) if (fs.existsSync(c)) return c;
+  return '';
 }
 
 function defaultManifest(slug, meta, extra = {}) {
@@ -228,7 +267,7 @@ class DoorManager {
     fs.mkdirSync(dir, { recursive: true });
     const files = zip.extractZip(zipPath, dir);
     if (!files.length) throw new Error('archive is empty');
-    const meta = sniffMeta(dir, base.replace(/[_]+/g, ' '));
+    const meta = sniffMeta(dir, prettyName(base));
     const manifest = defaultManifest(slug, meta, { sourceZip: path.basename(zipPath), files: files.length });
     fs.writeFileSync(path.join(dir, 'door.json'), JSON.stringify(manifest, null, 2));
     this.pushLog(`installed ${manifest.name} -> doors/${slug} (${files.length} files)`);
@@ -370,7 +409,11 @@ class DoorManager {
       this.pushLog(`drop file failed: ${e.message}`);
     }
     const cmdTemplate = door.cmd || '';
-    const dosbox = config.get('doors.dosboxPath');
+    const dosbox = config.get('doors.dosboxPath') || findDosbox();
+    if (door.type === 'dos' && !cmdTemplate && dosbox) {
+      await this.runDos(term, door, dir, dosbox);
+      return;
+    }
     if (!cmdTemplate && !dosbox) {
       term.color(14);
       term.write(`  This is a DOS door: ${door.exec || '(no executable detected)'}\r\n\r\n`);
@@ -393,34 +436,115 @@ class DoorManager {
     await this.runExternal(term, cmd, dir, door);
   }
 
-  runExternal(term, cmd, cwd, door) {
+  // DOS doors: DOSBox draws to a screen nobody sees, so the game talks to the
+  // caller over an emulated serial port that we bridge onto the terminal.
+  async runDos(term, door, dir, exe) {
+    return require('./dosbox').runDos(this, term, door, dir, exe);
+  }
+
+  runExternal(term, cmd, cwd, door, opts = {}) {
     return new Promise((resolve) => {
       this.pushLog(`launch: ${cmd}`);
+      const port = opts.serialPort || pickPort(cmd);
+      const isSerial = !!port || /\{port\}|nullmodem|serial/i.test(cmd);
       let child;
+      const env = { ...process.env, BBS_NODE: String(term.node), BBS_HANDLE: term.user ? term.user.handle : '' };
+      if (door.type === 'dos') {
+        // DOS doors draw to a "screen" we never show; the caller only sees COM1
+        env.SDL_VIDEODRIVER = env.SDL_VIDEODRIVER || 'dummy';
+        env.SDL_AUDIODRIVER = env.SDL_AUDIODRIVER || 'dummy';
+      }
       try {
-        child = spawn(cmd, { cwd, shell: true, env: { ...process.env, BBS_NODE: String(term.node), BBS_HANDLE: term.user ? term.user.handle : '' } });
+        child = spawn(cmd, { cwd, shell: true, env });
       } catch (e) {
         s.error(term, `Could not start the door: ${e.message}`);
         return resolve();
       }
       let finished = false;
       let timer = null;
+      let sock = null;
       const done = () => {
         if (finished) return;
         finished = true;
         if (timer) clearTimeout(timer);
+        try {
+          sock?.destroy();
+        } catch {}
         term.rawHandler = null;
         term.reset();
         term.write('\r\n');
         resolve();
       };
-      term.rawHandler = (chunk) => {
-        try {
-          child.stdin.write(chunk);
-        } catch {}
-      };
-      child.stdout.on('data', (b) => term.writeRaw(b.toString('utf8')));
-      child.stderr.on('data', (b) => term.writeRaw(b.toString('utf8')));
+      // A serial door talks over a TCP bridge, not stdin: wait for DOSBox to
+      // start listening, then splice the socket onto the caller's terminal.
+      if (isSerial) {
+        const target = port || Number(config.get('doors.tcpBridgePort')) || 2444;
+        let sawData = false;
+        const connect = (tries = 40) => {
+          if (finished) return;
+          sock = require('node:net').connect(target, '127.0.0.1');
+          sock.once('connect', () => {
+            this.pushLog(`${door.name} serial bridge up on ${target}`);
+            sock.on('data', (b) => {
+              if (!sawData) {
+                sawData = true;
+                if (timer) clearTimeout(timer);
+              }
+              term.writeRaw(b.toString('latin1'));
+            });
+            // a DOS door that never writes to COM1 has not been set up for a
+            // serial BBS yet (LORD, for one, wants LORDCFG run first)
+            timer = setTimeout(() => {
+              if (sawData || finished) return;
+              term.writeRaw(String.fromCharCode(13, 10) + String.fromCharCode(13, 10));
+              const hint = [
+                '  This game started but sent nothing to COM1.',
+                '  A DOS door has to be told to use the serial port before it will',
+                '  talk to a caller: run its setup program once (for LORD that is',
+                '  LORDCFG.EXE, option (S)etup Nodes -> COM1, 14400, DOOR.SYS).',
+                '  Press any key to go back.',
+              ];
+              for (const line of hint) term.write(line + String.fromCharCode(13, 10));
+            }, 6000);
+            sock.on('close', () => setTimeout(done, 400));
+            sock.on('error', () => {});
+            term.rawHandler = (chunk) => {
+              try {
+                sock.write(String(chunk), 'binary');
+              } catch {}
+            };
+          });
+          sock.once('error', () => {
+            try {
+              sock.destroy();
+            } catch {}
+            if (tries > 0 && !finished) setTimeout(() => connect(tries - 1), 250);
+            else if (!finished) {
+              s.error(term, 'The door never opened its serial port. Check the DOSBox log.');
+              done();
+            }
+          });
+        };
+        setTimeout(() => connect(), 600);
+      } else {
+        term.rawHandler = (chunk) => {
+          try {
+            child.stdin.write(chunk);
+          } catch {}
+        };
+      }
+      if (isSerial) {
+        // DOSBox chatters on stderr about SDL and BIOS calls; that is sysop
+        // material, not something a caller should see scroll past
+        const logFile = path.join(cwd, 'dosbox.log');
+        const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+        child.stdout?.on('data', (b) => logStream.write(b));
+        child.stderr?.on('data', (b) => logStream.write(b));
+        child.on('exit', () => logStream.end());
+      } else {
+        child.stdout?.on('data', (b) => term.writeRaw(b.toString('utf8')));
+        child.stderr?.on('data', (b) => term.writeRaw(b.toString('utf8')));
+      }
       child.on('error', (e) => {
         s.error(term, `Door error: ${e.message}`);
         done();

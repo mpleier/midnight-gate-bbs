@@ -60,12 +60,25 @@ function extractZip(zipPath, destDir) {
   const buf = fs.readFileSync(zipPath);
   const entries = list(buf);
   const written = [];
+  const root = path.resolve(destDir);
   for (const e of entries) {
+    // "legord/" is a directory entry; stripping the slash turned it into a
+    // zero-byte file, and every file under it then failed to extract
+    const isDir = /[\/\\]$/.test(e.name);
     const rel = safeRel(e.name);
     if (!rel) continue;
-    if (rel.endsWith('/')) continue;
-    const out = path.resolve(destDir, rel);
-    if (!out.startsWith(path.resolve(destDir) + path.sep)) continue; // zip-slip guard
+    const out = path.resolve(root, rel);
+    if (!out.startsWith(root + path.sep)) continue; // zip-slip guard
+    if (isDir) {
+      try {
+        fs.mkdirSync(out, { recursive: true });
+      } catch {
+        fs.rmSync(out, { force: true });
+        fs.mkdirSync(out, { recursive: true });
+      }
+      continue;
+    }
+    if (fs.existsSync(out) && fs.statSync(out).isDirectory()) continue;
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, extractEntry(buf, e));
     written.push(rel);

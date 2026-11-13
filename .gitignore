@@ -1,22 +1,33 @@
-
-!doors/archives/.gitkeep
-!doors/install/.gitkeep
-# door install drop folder and installed archives are per-machine
 # local configuration (contains the sysop/admin password hash)
-# runtime data — user accounts, messages, calls, per-door state
-# uploads live on the operator's disk, not in git
-*.log
-.DS_Store
 config.json
+
+# runtime data — user accounts, messages, calls, per-door state
 data/
-doors/archives/*
+
+# uploads live on the operator's disk, not in git
+files/
+
+# installed doors are per-machine (and often contain licensed binaries);
+# only the drop folders are tracked
+doors/*
+!doors/install/
+!doors/install/.gitkeep
+!doors/archives/
+!doors/archives/.gitkeep
 doors/install/*
-doors/install/*.zip
-doors/smoke-door*/
-doors/tmp/
-files/doors/
+doors/archives/*
+!doors/install/.gitkeep
+!doors/archives/.gitkeep
+
 node_modules/
 npm-debug.log*
+*.log
+stderr.txt
+stdout.txt
+
+# build artifacts
 public/audio/*.wav
-test/.tmp-data/
+test/.tmp-*/
+
+.DS_Store
 Thumbs.db
