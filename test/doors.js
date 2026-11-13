@@ -110,22 +110,66 @@ async function runDoor(file) {
     error = e;
   }
   const ok = !error && stats.overflows.length === 0;
+
+  // targeted regression: a yard with no turns and no ore must return a message,
+  // not spin (this was a real hang in dominions)
+  let probe = 'n/a';
+  if (mod._internals && typeof mod._internals.screenBuild === 'function' && typeof mod._internals.newUser === 'function') {
+    const zero = mod._internals.newUser('Harness');
+    zero.turns = 0;
+    zero.resources = 0;
+    const t = makeTerm(['\x1b']).term;
+    try {
+      const msg = await mod._internals.screenBuild(t, ctx, zero);
+      probe = typeof msg === 'string' ? 'ok' : 'no message returned';
+    } catch (e) {
+      probe = e.message;
+    }
+    if (zero.turns !== 0) probe = 'spent a turn it did not have';
+  }
+
   return {
     file,
     name: mod.name,
     category: mod.category,
-    ok,
-    why: error ? error.message : stats.overflows.slice(0, 2).join('; '),
+    ok: ok && (probe === 'n/a' || probe === 'ok'),
+    why: error
+      ? error.message
+      : stats.overflows.slice(0, 2).join('; ') || (probe !== 'n/a' && probe !== 'ok' ? `zero-turn probe: ${probe}` : ''),
     prints: stats.prints,
     maxCol: stats.maxCol,
     maxRow: stats.maxRow,
   };
 }
-
-(async () => {
+if (process.argv[2] === '--one') {
+  runDoor(process.argv[3])
+    .then((r) => {
+      console.log('RESULT ' + JSON.stringify(r));
+      process.exit(r.ok ? 0 : 1);
+    })
+    .catch((e) => {
+      console.log('RESULT ' + JSON.stringify({ file: process.argv[3], ok: false, why: e.message }));
+      process.exit(1);
+    });
+} else {
+  // each door runs in its own process: a synchronous loop cannot wedge the suite
+  const { spawnSync } = require('node:child_process');
   const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.js')).sort();
   const rows = [];
-  for (const f of files) rows.push(await runDoor(f));
+  for (const f of files) {
+    const child = spawnSync(process.execPath, [__filename, '--one', f], { encoding: 'utf8', timeout: 15000 });
+    const line = String(child.stdout || '')
+      .split('\n')
+      .find((l) => l.startsWith('RESULT '));
+    if (line) rows.push(JSON.parse(line.slice(7)));
+    else {
+      const why =
+        child.error && child.error.code === 'ETIMEDOUT'
+          ? 'hung for 15s (synchronous loop or blocked input)'
+          : `no result — ${String(child.stderr || '').split('\n')[0] || 'crashed'}`;
+      rows.push({ file: f, ok: false, why });
+    }
+  }
   let bad = 0;
   for (const r of rows) {
     if (!r.ok) bad++;
@@ -135,4 +179,4 @@ async function runDoor(file) {
   }
   console.log(`\n${rows.length - bad}/${rows.length} doors clean`);
   process.exitCode = bad ? 1 : 0;
-})();
+}

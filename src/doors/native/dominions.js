@@ -747,9 +747,9 @@ async function screenBuild(term, ctx, u) {
       msg = 'The yard is lost with the home system. Take it back first.';
       return msg;
     }
-    if (u.turns <= 0) { msg = 'No turns left today; the yard stands idle.'; continue; }
+    if (u.turns <= 0) return 'No turns left today; the yard stands idle.';
     const maxQty = Math.min(MAX_BUILD, Math.floor(u.resources / SHIP_COST));
-    if (maxQty <= 0) { msg = `A hull costs ${SHIP_COST} resources. Not enough ore.`; continue; }
+    if (maxQty <= 0) return `A hull costs ${SHIP_COST} resources. Not enough ore.`;
     const qty = await askInt(term, 14, `Build how many ships? (1-${maxQty}, blank cancels):`, 1, maxQty);
     if (qty == null) return 'The yard stands down.';
     u.turns -= 1;
