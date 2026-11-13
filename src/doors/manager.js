@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const cp437 = require('../cp437');
 const config = require('../config');
 const db = require('../db');
 const s = require('../flow/screens');
@@ -516,7 +517,10 @@ class DoorManager {
               carry = FF;
               data = data.slice(0, -1);
             }
-            term.writeRaw(data.split(FF + String.fromCharCode(0)).join(''));
+            const clean = data.split(FF + String.fromCharCode(0)).join('');
+            // the door writes CP437: telnet clients expect it raw, the web
+            // terminal needs it as UTF-8 or the box drawing turns to mojibake
+            term.writeRaw(term.kind === 'web' ? cp437.decode(Buffer.from(clean, 'latin1')) : clean);
           });
           s.on('close', () => setTimeout(done, 400));
           s.on('error', () => {});
