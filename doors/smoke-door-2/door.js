@@ -1,0 +1,1 @@
+module.exports={id:'smoke-door',name:'SMOKE DOOR',author:'test',category:'Arcade',description:'A door installed by the smoke test.',minLevel:10,async run(term){term.cls();term.print(3,3,'SMOKE DOOR RUNNING',15);await term.pause();}};

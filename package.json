@@ -8,10 +8,21 @@
     "art": "node tools/make-art.js",
     "seed-files": "node tools/seed-files.js",
     "test": "node test/smoke.js",
-    "test:doors": "node test/doors.js"
+    "test:doors": "node test/doors.js",
+    "test:qc": "node test/qc.js"
   },
-  "keywords": ["bbs", "ansi", "cp437", "telnet", "retro", "door-games", "bulletin-board"],
-  "engines": { "node": ">=18" },
+  "keywords": [
+    "bbs",
+    "ansi",
+    "cp437",
+    "telnet",
+    "retro",
+    "door-games",
+    "bulletin-board"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "private": true,
   "license": "MIT"
 }

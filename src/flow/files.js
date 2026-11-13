@@ -32,7 +32,10 @@ async function areas(term) {
   for (;;) {
     const top = s.frame(term, 'FILES.ANS', 'FILE AREAS');
     const list = db.fileAreas.filter((a) => (term.user.level || 0) >= (a.level || 0));
-    term.print(top, 3, '  #   Area                            Files   Description', 8);
+    term.print(top, 3, '#', 8);
+    term.print(top, 7, s.pad('Area', 30), 8);
+    term.print(top, 38, s.pad('Files', 5, true), 8);
+    term.print(top, 45, 'Description', 8);
     term.print(top + 1, 3, '─'.repeat(Math.min(term.cols - 6, 74)), 8);
     list.forEach((a, i) => {
       const row = top + 2 + i;
@@ -61,7 +64,11 @@ async function areaMenu(term, area) {
     if (!files.length) {
       term.print(top, 3, 'Nothing uploaded here yet.', 8);
     } else {
-      term.print(top, 3, '  #   Filename             Size  Date             Description', 8);
+      term.print(top, 3, '#', 8);
+      term.print(top, 7, s.pad('Filename', 20), 8);
+      term.print(top, 28, s.pad('Size', 5, true), 8);
+      term.print(top, 35, 'Date', 8);
+      term.print(top, 52, 'Description', 8);
       term.print(top + 1, 3, '─'.repeat(Math.min(term.cols - 6, 74)), 8);
       files.slice(0, Math.max(3, term.rows - (top + 7))).forEach((f, i) => {
         const row = top + 2 + i;

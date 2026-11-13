@@ -113,8 +113,14 @@ async function mainMenu(term) {
     try {
       await fn()(term);
     } catch (err) {
-      if (err instanceof Terminal.AbortInput || err instanceof Terminal.Hangup) throw err;
-      if (err && err.name === 'AbortInput') throw err;
+      const name = err && err.name;
+      if (name === 'Hangup') throw err;
+      // ESC inside a feature cancels the feature, it must not drop the carrier
+      if (name === 'AbortInput') {
+        term.write('\r\n');
+        term.activity = 'Main menu';
+        continue;
+      }
       term.write(`\r\n\x1b[0;31mError: ${err && err.message ? err.message : err}\x1b[0m\r\n`);
       await term.pause();
     }

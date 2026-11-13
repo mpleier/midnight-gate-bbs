@@ -19,7 +19,11 @@ async function bases(term) {
   for (;;) {
     const top = s.frame(term, 'MSG.ANS', 'MESSAGE BASES');
     const boards = visibleBoards(term.user);
-    term.print(top, 3, '  #   Board                          Msgs  New  Description', 8);
+    term.print(top, 3, '#', 8);
+    term.print(top, 7, s.pad('Board', 29), 8);
+    term.print(top, 37, s.pad('Msgs', 5, true), 8);
+    term.print(top, 43, s.pad('New', 4, true), 8);
+    term.print(top, 49, 'Description', 8);
     term.print(top + 1, 3, '─'.repeat(Math.min(term.cols - 6, 74)), 8);
     boards.forEach((b, i) => {
       const row = top + 2 + i;
@@ -52,7 +56,10 @@ async function boardMenu(term, board) {
     const top = s.frame(term, 'MSG.ANS', board.name.toUpperCase());
     const lastRead = term.user.lastRead ? term.user.lastRead[board.id] || 0 : 0;
     term.print(top, 3, board.desc, 8);
-    term.print(top + 1, 3, '  #    From                 Subject                          Date', 8);
+    term.print(top + 1, 3, s.pad('#', 3), 8);
+    term.print(top + 1, 8, s.pad('From', 20), 8);
+    term.print(top + 1, 29, s.pad('Subject', 33), 8);
+    term.print(top + 1, 63, 'Date', 8);
     term.print(top + 2, 3, '─'.repeat(Math.min(term.cols - 6, 74)), 8);
     const pageSize = Math.max(3, term.rows - (top + 7));
     const list = all.slice(-pageSize).reverse();
@@ -219,10 +226,11 @@ async function mail(term) {
       term.write('  Your mailbox is empty.\r\n');
       term.reset();
     } else {
-      term.color(8);
-      term.write('  #   From                 Subject                          Date\r\n');
-      term.write('  ' + '─'.repeat(Math.min(term.cols - 4, 74)) + '\r\n');
-      term.reset();
+      term.print(5, 3, '#', 8);
+      term.print(5, 7, s.pad('From', 20), 8);
+      term.print(5, 28, s.pad('Subject', 33), 8);
+      term.print(5, 62, 'Date', 8);
+      term.print(6, 3, '─'.repeat(Math.min(term.cols - 4, 74)), 8);
       inbox.slice(-12).forEach((m, i) => {
         const row = 7 + i;
         term.print(row, 3, String(i + 1).padStart(2), m.read ? 8 : 15);

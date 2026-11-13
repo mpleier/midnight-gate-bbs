@@ -15,6 +15,22 @@ const cp437 = require('./cp437');
 const sessions = new Map(); // token -> {user, exp}  (also marks logged-out tokens)
 const revoked = new Set();
 
+// ---- brute-force guard on the login endpoint -------------------------------
+const MAX_LOGIN_FAILS = 5;
+const LOCKOUT_MS = 5 * 60 * 1000;
+const loginFails = new Map(); // ip -> { n, until }
+
+function clientIp(req) {
+  // only believe X-Forwarded-For when the sysop says a proxy sits in front,
+  // otherwise anyone can dodge the lockout by making the header up
+  if (config.get('network.trustProxy')) {
+    const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    if (fwd) return fwd;
+  }
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+
 function signToken(user, exp) {
   const secret = config.data.admin.passwordHash || 'gate';
   const payload = Buffer.from(`${user}|${exp}`).toString('base64url');
@@ -138,20 +154,32 @@ async function handle(req, res, url) {
   if (!p.startsWith('/api/admin')) return false;
 
   if (p === '/api/admin/login' && req.method === 'POST') {
+    const ip = clientIp(req);
+    const rec = loginFails.get(ip);
+    if (rec && rec.until > Date.now()) {
+      const wait = Math.ceil((rec.until - Date.now()) / 1000);
+      res.setHeader('retry-after', String(wait));
+      return json(res, 429, { error: `too many attempts — try again in ${wait}s` });
+    }
     const body = await readBody(req);
     const user = String(body.user || '').trim();
     const password = String(body.password || '');
     const okUser = user === config.get('admin.user') || db.findUser(user)?.level >= 100;
     if (okUser && config.checkAdminPassword(password)) {
+      loginFails.delete(ip);
       const exp = Date.now() + 12 * 3600 * 1000;
       const token = signToken(user, exp);
       sessions.set(token, { user, exp });
+      const secure = req.socket && req.socket.encrypted ? '; Secure' : '';
       res.setHeader(
         'set-cookie',
-        `bbs_admin=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${12 * 3600}`
+        `bbs_admin=${token}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${12 * 3600}`
       );
       return json(res, 200, { ok: true, user, token });
     }
+    // count the failure; five in a row locks that address out for five minutes
+    const n = (rec ? rec.n : 0) + 1;
+    loginFails.set(ip, n >= MAX_LOGIN_FAILS ? { n: 0, until: Date.now() + LOCKOUT_MS } : { n, until: 0 });
     return json(res, 401, { error: 'bad credentials' });
   }
 
