@@ -1,22 +1,21 @@
-# runtime data — user accounts, messages, calls, per-door state
-data/
-test/.tmp-data/
 
-# local configuration (contains the sysop/admin password hash)
-config.json
-
-# door install drop folder and installed archives are per-machine
-doors/install/*
-doors/archives/*
-!doors/install/.gitkeep
 !doors/archives/.gitkeep
-
+!doors/install/.gitkeep
+# door install drop folder and installed archives are per-machine
+# local configuration (contains the sysop/admin password hash)
+# runtime data — user accounts, messages, calls, per-door state
 # uploads live on the operator's disk, not in git
+*.log
+.DS_Store
+config.json
+data/
+doors/archives/*
+doors/install/*
+doors/install/*.zip
+doors/smoke-door*/
+doors/tmp/
 files/doors/
-
 node_modules/
 npm-debug.log*
-.DS_Store
+test/.tmp-data/
 Thumbs.db
-*.log
-doors/tmp/
