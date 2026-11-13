@@ -119,18 +119,26 @@ Red Dragon — Node 1", 59:34 on the clock).
 **Known gap.** A FOSSIL driver is now part of the door: `BNU 1.70` (`BNU.COM`,
 `BNU.SYS`, docs) sits in `legord/`, the runner loads it with `BNU /F` before the
 game, and `NODE1.DAT` reads `FOSSIL`, `COMPORT 1`, `NODIRECT`, `BBSDROP C:\BBS`.
-BNU reports itself resident ("1 Port(s) available"), DOSBox's nullmodem carries
-bytes (`echo SERIAL-TEST > COM1` arrives on the socket), and the bridge connects
-when LORD starts — but the game still paints DOSBox's own screen and sends
-nothing over COM1. Until that is solved the door is installed with
-`enabled: false`, so the menu does not offer a door that would show a caller a
-splash and then nothing.
+BNU reports itself resident ("1 Port(s) available"); DOSBox's nullmodem carries
+bytes (`echo SERIAL-TEST > COM1` arrives on the socket); and the bridge connects
+when LORD starts — but LORD paints DOSBox's own screen and sends nothing over
+COM1. Until that is solved the door is installed with `enabled: false`.
 
-Next things worth trying, in order: X00 1.53 instead of BNU (LORDCFG has a
-dedicated "X00 Weird Fossil Driver" option, which suggests it needs the X00
-quirks); a real UART at a different base (`serial1=nullmodem` with
-`serial2=dongle`); or NetFoss/Net2BBS on the Windows side, which is how DOS doors
-are bridged on NT-family systems.
+**Screen scraping (Doorway).** A FOSSIL only carries the serial channel; a door
+that writes ANSI to the screen needs a shim between it and the caller. Doorway
+2.32 (`DOORWAY.EXE`, `ENGLISH.LAN`, docs) is installed in `legord/` for that,
+driven as `DOORWAY COM1F /V:D /P:WRAP.BAT` with the game in local mode
+(`COM0`/baud `0` in `DORINFO1.DEF`, `WRAP.BAT` calling `START.BAT <node>`).
+
+That much is proven: Doorway's own banner — 1111 bytes, including its ANSI
+cursor-position query — reaches a socket client through BNU, the emulated UART
+and the bridge. Doorway then returns to host *without launching* the program
+(`WRAP.BAT` never runs, no marker file is written), so the handover is the open
+problem. Two things to try: answer its terminal identification properly
+(`ESC[6n` → `ESC[1;1R`, `ESC[c` → `ESC[?1;0c`) instead of ignoring it, and build
+a real `DOORWAY.CFG` with `DWCONFIG.EXE` rather than trusting command-line
+switches alone. Note Doorway is shareware: unregistered it gives each caller ten
+minutes and prints "REGISTERED TO: [UNREGISTERED COPY!]".
 
 ## Troubleshooting
 
