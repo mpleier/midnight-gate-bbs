@@ -9,7 +9,9 @@
     "seed-files": "node tools/seed-files.js",
     "test": "node test/smoke.js",
     "test:doors": "node test/doors.js",
-    "test:qc": "node test/qc.js"
+    "test:qc": "node test/qc.js",
+    "audio": "node tools/make-dialup-audio.js",
+    "audio:check": "node tools/check-dialup-audio.js"
   },
   "keywords": [
     "bbs",

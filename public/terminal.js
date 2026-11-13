@@ -393,7 +393,7 @@ const DTMF = {
    answer tone and training, trimmed and normalised. It is used whenever it
    loads; the synthesised handshake below stays as the fallback, and ?synth=1
    forces the synth so the two can be compared. */
-const DIAL_SAMPLE_URL = '/audio/dialup.mp3';
+const DIAL_SAMPLE_URL = '/audio/dialup.mp3?v=2';
 const forceSynth = new URLSearchParams(location.search).has('synth');
 let sampleEl = null;
 let sampleBroken = false;

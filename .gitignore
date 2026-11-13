@@ -17,5 +17,6 @@ doors/tmp/
 files/doors/
 node_modules/
 npm-debug.log*
+public/audio/*.wav
 test/.tmp-data/
 Thumbs.db
