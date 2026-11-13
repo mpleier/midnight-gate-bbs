@@ -101,10 +101,25 @@ screen.
 
 **One-time setup is still yours.** Most DOS doors ship without a configuration file
 and have to be told which port and speed to use. For Legend of the Red Dragon that
-means running `LORDCFG.EXE` once in the door directory: `(S)etup Nodes`, COM1, the
-locked baud rate, drop file `DOOR.SYS`. Until you do, the game starts under DOSBox and
-writes nothing to COM1 — the board says so on screen instead of showing a blank
-screen, and the sysop log records `serial bridge up` with no traffic.
+means running `LORDCFG.EXE` once in the door directory: `(S)etup Nodes`, set
+GBBSTYPE to `QBBS`, drop-file path `C:\BBS`, and **`(B) Use direct screen writes?
+: No`** — with direct writes on, the game paints DOSBox's own screen and the caller
+sees nothing. The config lands in `NODE1.DAT`, a plain text file, so it can also be
+edited by hand.
+
+LORD also refuses to be started as `LORD.EXE`: it demands `START.BAT <node>`. The
+manifest therefore points at `legord/START.BAT`, and the runner appends the node
+number for batch entry points. Its drop file is `DORINFO1.DEF` (the QuickBBS
+format), written to `C:\BBS` inside the per-call directory.
+
+Verified here: archive extracts, installs, appears on the menu, LORDCFG writes a
+working `NODE1.DAT`, and DOSBox boots the game to its title screen ("Legend Of the
+Red Dragon — Node 1", 59:34 on the clock). What is *not* verified yet is the game
+writing to COM1: the bridge and DOSBox's nullmodem are proven to carry bytes
+(`echo SERIAL-TEST > COM1` arrives), but LORD 4.02a stays silent on the port and
+renders locally. The remaining step is the one every DOS door needs anyway: a
+FOSSIL driver (X00/BNU) in the guest, with LORDCFG set to `FOSSIL` rather than
+`Internal Com Routines`, which is what real BBSes ran in 1996.
 
 ## Troubleshooting
 

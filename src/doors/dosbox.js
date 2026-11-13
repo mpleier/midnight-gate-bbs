@@ -38,11 +38,16 @@ async function runDos(manager, term, door, installDir, dosboxExe) {
 
   const runDir = relDir ? path.join(work, relDir) : work;
   const dropName = String(door.dropType || 'DOOR.SYS').toUpperCase();
-  try {
-    writeDrop(term, dropName, runDir);
-    if (runDir !== work) writeDrop(term, dropName, work);
-  } catch (e) {
-    manager.pushLog('drop file failed: ' + e.message);
+  // LORD keeps its node configuration (NODE1.DAT, written by LORDCFG) pointing at
+  // C:\BBS for the drop file, so it goes there as well as next to the executable
+  const dropDirs = [runDir, work, path.join(work, 'BBS')];
+  for (const d of dropDirs) {
+    try {
+      fs.mkdirSync(d, { recursive: true });
+      writeDrop(term, dropName, d);
+    } catch (e) {
+      manager.pushLog('drop file failed: ' + e.message);
+    }
   }
 
   const port = 2500 + (Number(term.node) || 1) * 10 + Math.floor(Math.random() * 8);
@@ -64,7 +69,13 @@ async function runDos(manager, term, door, installDir, dosboxExe) {
     'c:',
   ];
   if (relDir) lines.push('cd ' + dosPath(relDir));
-  lines.push(runName, 'exit', '');
+  // DOS doors are fussy about how they are launched: LORD refuses to run as
+  // LORD.EXE and insists on START.BAT <node> (it passes the node through to the
+  // executable, along with its own switches)
+  const isBatch = /\.bat$/i.test(runName);
+  const node = String(term.node || 1);
+  const extra = Array.isArray(door.args) && door.args.length ? door.args.map(String) : isBatch ? [node] : [];
+  lines.push([runName, ...extra].join(' '), 'exit', '');
   fs.writeFileSync(conf, lines.join('\r\n'));
 
   manager.pushLog('dosbox: ' + runName + ' on COM1 port ' + port);

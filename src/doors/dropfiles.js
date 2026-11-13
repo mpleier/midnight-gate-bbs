@@ -76,7 +76,7 @@ function dorinfo(term) {
   return [
     'SysOp',
     require('../config').get('bbs.name'),
-    'COM0',
+    'COM1',
     '14400',
     '0',
     `${first}`,
