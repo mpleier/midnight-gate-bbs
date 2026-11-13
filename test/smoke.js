@@ -97,6 +97,14 @@ async function main() {
   const xterm = await fetch(BASE + '/vendor/xterm.js');
   check('xterm.js vendored', xterm.ok && Number(xterm.headers.get('content-length') || 0) > 100000);
 
+  const audio = await fetch(BASE + '/audio/dialup.mp3');
+  const audioType = audio.headers.get('content-type') || '';
+  check(
+    'dial-up recording is served',
+    audio.ok && /audio\/mpeg/.test(audioType) && Number(audio.headers.get('content-length') || 0) > 50000,
+    `${audio.status} ${audioType} ${audio.headers.get('content-length')} bytes`
+  );
+
   // ---- admin api ----------------------------------------------------------
   const badLogin = await fetch(BASE + '/api/admin/login', {
     method: 'POST',

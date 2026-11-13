@@ -29,6 +29,9 @@ const MIME = {
   '.ttf': 'font/ttf',
   '.ans': 'text/plain; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg',
+  '.wav': 'audio/wav',
 };
 
 function send(res, code, body, headers = {}) {

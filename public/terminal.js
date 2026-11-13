@@ -354,6 +354,12 @@ function click(start, dur = 0.018, gain = 0.18) {
 }
 
 function stopModem() {
+  if (sampleEl && !sampleEl.paused) {
+    try {
+      sampleEl.pause();
+      sampleEl.currentTime = 0;
+    } catch {}
+  }
   if (!modemNodes.length) {
     modemPlaying = false;
     return;
@@ -382,8 +388,64 @@ const DTMF = {
   5: [770, 1336], 6: [770, 1477], 7: [852, 1209], 8: [852, 1336], 9: [852, 1477],
 };
 
+/* ------------------------------------------------------- recorded dial-up
+   The real handshake, not the oscillator: 11 s of dial tone, DTMF, ringback,
+   answer tone and training, trimmed and normalised. It is used whenever it
+   loads; the synthesised handshake below stays as the fallback, and ?synth=1
+   forces the synth so the two can be compared. */
+const DIAL_SAMPLE_URL = '/audio/dialup.mp3';
+const forceSynth = new URLSearchParams(location.search).has('synth');
+let sampleEl = null;
+let sampleBroken = false;
+
+function dialSample() {
+  if (forceSynth || sampleEl || sampleBroken) return sampleEl;
+  try {
+    sampleEl = new Audio(DIAL_SAMPLE_URL);
+    sampleEl.preload = 'auto';
+    sampleEl.volume = 0.85;
+    // a detached element can sit at readyState 0 forever unless told to fetch
+    sampleEl.load();
+    sampleEl.addEventListener('error', () => {
+      sampleBroken = true;
+      sampleEl = null;
+    });
+  } catch {
+    sampleBroken = true;
+  }
+  return sampleEl;
+}
+
+function playSample() {
+  const el = dialSample();
+  if (!el || el.readyState < 2) return false;
+  try {
+    el.currentTime = 0;
+    el.volume = wantSound ? 0.85 : 0;
+    const p = el.play();
+    if (p && p.catch) {
+      // Before the caller has clicked anything the browser blocks playback.
+      // The synth would be blocked too, so keep the promise: the pointerdown
+      // handler replays the handshake once audio is unlocked.
+      p.catch(() => {
+        soundPending = true;
+        const btn = document.getElementById('btnSound');
+        if (btn) btn.classList.add('pending');
+      });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function playModem(bps = 14400) {
   stopModem();
+  if (playSample()) {
+    modemPlaying = true;
+    modemEnd = (audioCtx ? audioCtx.currentTime : 0) + 12;
+    return;
+  }
   const c = audioChain();
   if (!c) return;
   const ac = c.ac;
@@ -574,6 +636,7 @@ async function boot() {
       if (Array.isArray(d.modems) && d.modems.length) modemList = d.modems;
     }
   } catch {}
+  dialSample(); // start fetching the recording so it is ready when we dial
   connect();
   pollStatus();
 }
@@ -593,5 +656,20 @@ window.__bbs = {
   },
   get state() {
     return { connected, wantSound, audio: audioCtx ? audioCtx.state : 'none', dialNumbers };
+  },
+  // the recorded handshake: what it is doing, for the QC checks
+  get sample() {
+    const el = sampleEl;
+    return el
+      ? {
+          url: DIAL_SAMPLE_URL,
+          ready: el.readyState,
+          duration: el.duration,
+          paused: el.paused,
+          at: el.currentTime,
+          volume: el.volume,
+          forcedSynth: forceSynth,
+        }
+      : { url: DIAL_SAMPLE_URL, broken: sampleBroken, forcedSynth: forceSynth };
   },
 };
