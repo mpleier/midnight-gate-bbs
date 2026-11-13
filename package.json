@@ -11,7 +11,8 @@
     "test:doors": "node test/doors.js",
     "test:qc": "node test/qc.js",
     "audio": "node tools/make-dialup-audio.js",
-    "audio:check": "node tools/check-dialup-audio.js"
+    "audio:check": "node tools/check-dialup-audio.js",
+    "build:door-shim": "node tools/dosdoor/build.js"
   },
   "keywords": [
     "bbs",

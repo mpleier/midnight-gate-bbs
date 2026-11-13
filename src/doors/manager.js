@@ -486,6 +486,7 @@ class DoorManager {
         let sawData = false;
         let probeTail = '';
         let carry = '';
+        let synced = false;
         const net = require('node:net');
         bridge = net.createServer((s) => {
           sock = s;
@@ -516,6 +517,19 @@ class DoorManager {
             if (data.endsWith(FF)) {
               carry = FF;
               data = data.slice(0, -1);
+            }
+            // before the door's first escape sequence the line only carries the
+            // nullmodem's handshake noise, which is not screen output
+            if (!synced) {
+              let i = 0;
+              while (i < data.length) {
+                const c = data.charCodeAt(i);
+                if (c === 27 || c === 13 || c === 10 || (c >= 32 && c <= 126)) break;
+                i++;
+              }
+              if (i >= data.length) return;
+              data = data.slice(i);
+              synced = true;
             }
             const clean = data.split(FF + String.fromCharCode(0)).join('');
             // the door writes CP437: telnet clients expect it raw, the web

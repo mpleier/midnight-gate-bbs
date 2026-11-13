@@ -116,44 +116,45 @@ Verified here: archive extracts, installs, appears on the menu, LORDCFG writes a
 working `NODE1.DAT`, and DOSBox boots the game to its title screen ("Legend Of the
 Red Dragon — Node 1", 59:34 on the clock).
 
-**FOSSIL first.** `BNU 1.70` (`BNU.COM`, `BNU.SYS`, docs) sits in `legord/`, the
-runner loads it with `BNU /F` before the game, and `NODE1.DAT` reads `FOSSIL`,
-`COMPORT 1`, `NODIRECT`, `BBSDROP C:\BBS`. LORD on its own still paints DOSBox's
-own screen and sends nothing down COM1 — a FOSSIL only carries the serial
-channel, not screen output — which is why the screen scraper below exists.
-
-**It runs.** The chain that finally works, end to end, for a caller on the web
-terminal or plain telnet:
+**It runs, on our own shim.** The chain that works, end to end, for a caller on
+the web terminal or plain telnet:
 
 ```
 DOSBox-X  serial1=nullmodem (the board listens, DOSBox dials out)
-BNU /F    FOSSIL driver, resident
-DOORWAY SYSF /V:D /P:COMMAND.COM /C START.BAT <node>
+SCRAPE.COM   the board's screen redirector, resident
+START.BAT <node>
 ```
 
-with the game in local mode (`COM0` / baud `0` in `DORINFO1.DEF`) and a `DOOR.SYS`
-beside it for Doorway to read. Doorway scrapes the game's screen and sends ANSI
-down the FOSSIL; the board answers its terminal-identification queries
-(`ESC[6n` → `ESC[1;1R`, `ESC[c` → `ESC[?1;0c`) because xterm and telnet clients
-are inconsistent about it.
+`SCRAPE.COM` is ours — `tools/dosdoor/scrape.asm`, built with
+`npm run build:door-shim`, source and notes in `tools/dosdoor/`. It mirrors the
+80×25 VGA text buffer to COM1 and hands the caller's keystrokes to the game
+through the keyboard interrupt. Because it reads the buffer instead of hooking
+output calls, it does not care how the door writes: BIOS, DOS or straight into
+video memory. See `tools/dosdoor/README.md`.
 
-Three things cost the most time and are worth remembering:
+It replaced **Doorway**, which worked but is shareware: unregistered it caps each
+caller at ten minutes and prints `Registered to: [UNREGISTERED COPY!]` at them.
+Nothing in the runner refers to Doorway any more, and the shareware binaries are
+not in the tree.
+
+Four things cost the most time and are worth remembering:
 
 1. **LORD refuses to start as `LORD.EXE`** — it demands `START.BAT <node>`.
-2. **Doorway cannot exec a `.BAT`.** It printed its banner, then "RETURNING TO
-   HOST" and never ran the door; wrapping the batch in `COMMAND.COM /C` fixed it.
+2. **A FOSSIL driver cannot carry a screen.** BNU reports `1 Port(s) available`
+   and `0 Port(s) active`, and blocks every transmit until it sees carrier, so a
+   door that writes to the screen sends nothing and a shim that writes through
+   the FOSSIL hangs on its first byte. Talk to the UART at `0x3F8` instead.
 3. **DOSBox's nullmodem dials out**, whatever `server:` suggests. The board has
    to *listen* on the port and accept DOSBox's connection; the opposite
    arrangement produced six sync bytes and silence.
+4. **The drop file location matters.** LORD reads `DORINFO1.DEF` from `C:\BBS`
+   (per its own `NODE1.DAT`), not from the directory it runs in; without it the
+   game exits two seconds in, with the error visible only on the emulated screen.
 
-Verified: `Legend Of The Red Dragon — Compiled 5/24/99: VERSION 4.02a`,
-`REGISTERED, Thanks to eXo!`, the warrior menu, and the join prompt, over both
-transports.
-
-**Doorway is shareware.** Unregistered it caps each caller at ten minutes and
-prints `Registered to: [UNREGISTERED COPY!]` to them. That is the timer callers
-see. Registering Doorway (PC Micro) removes both, and `doors/dosbox.js` needs no
-change when you do.
+Verified: `Legend Of The Red Dragon — Compiled 5/24/99: VERSION 4.02a`, the
+warrior menu, `L` answering *"The game has never been played before."*, an
+invalid key answered with *"Try entering a valid option, it might actually do
+something."*, and the join prompt — over both transports.
 
 ## Troubleshooting
 

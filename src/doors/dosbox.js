@@ -49,15 +49,6 @@ async function runDos(manager, term, door, installDir, dosboxExe) {
       manager.pushLog('drop file failed: ' + e.message);
     }
   }
-  // Doorway's SYS mode reads DOOR.SYS from its working directory to learn who the
-  // caller is and how long they have left, whatever the door itself prefers
-  if (fs.existsSync(path.join(runDir, 'DOORWAY.EXE'))) {
-    try {
-      writeDrop(term, 'DOOR.SYS', runDir);
-    } catch (e) {
-      manager.pushLog('doorway drop file failed: ' + e.message);
-    }
-  }
 
   const port = 2500 + (Number(term.node) || 1) * 10 + Math.floor(Math.random() * 8);
   const conf = path.join(work, 'dosbox.conf');
@@ -70,7 +61,9 @@ async function runDos(manager, term, door, installDir, dosboxExe) {
     'machine=svga_s3',
     'memsize=16',
     '[cpu]',
-    'cycles=auto',
+    // a text door needs speed, not accuracy: 'auto' throttles so hard that the
+    // screen mirror falls behind and games start timing out
+    'cycles=max',
     '[serial]',
     'serial1=nullmodem server:127.0.0.1 port:' + port,
     '[autoexec]',
@@ -78,13 +71,18 @@ async function runDos(manager, term, door, installDir, dosboxExe) {
     'c:',
   ];
   if (relDir) lines.push('cd ' + dosPath(relDir));
-  // most classic DOS doors expect a FOSSIL driver to be resident; BNU /F is the
-  // usual incantation (X00 is loaded as a device driver instead)
-  for (const cand of ['BNU.COM', 'X00.EXE']) {
-    if (fs.existsSync(path.join(runDir, cand))) {
-      lines.push(cand === 'BNU.COM' ? 'BNU /F' : 'X00 /Pn');
-      manager.pushLog('fossil: ' + cand + ' loaded before the door');
-      break;
+  // Screen redirector. A DOS door paints the emulated screen; SCRAPE.COM (ours,
+  // built from tools/dosdoor/scrape.asm) mirrors that screen down COM1 and feeds
+  // the caller's keystrokes back, so the door needs no FOSSIL and no serial setup
+  // of its own. It replaces the shareware Doorway that used to sit here.
+  const shimSrc = path.join(__dirname, 'dos', 'scrape.com');
+  if (fs.existsSync(shimSrc)) {
+    try {
+      fs.copyFileSync(shimSrc, path.join(runDir, 'SCRAPE.COM'));
+      lines.push('SCRAPE.COM');
+      manager.pushLog('shim: SCRAPE.COM installed before the door');
+    } catch (e) {
+      manager.pushLog('shim install failed: ' + e.message);
     }
   }
   // DOS doors are fussy about how they are launched: LORD refuses to run as
@@ -95,17 +93,10 @@ async function runDos(manager, term, door, installDir, dosboxExe) {
   const extra = Array.isArray(door.args) && door.args.length ? door.args.map(String) : isBatch ? [node] : [];
   const doorLine = [runName, ...extra].join(' ');
 
-  // A door that writes ANSI to the screen instead of down the FOSSIL needs a
-  // screen-scraper between it and the caller. Doorway does that job (/V:D is
-  // "direct screen writes"), but it can only exec an EXE or COM, so batch entry
-  // points go through COMMAND.COM /C.
-  if (fs.existsSync(path.join(runDir, 'DOORWAY.EXE')) && fs.existsSync(path.join(runDir, 'COMMAND.COM'))) {
-    const prog = isBatch ? 'COMMAND.COM /C ' + doorLine : doorLine;
-    lines.push('DOORWAY SYSF /V:D /P:' + prog);
-    manager.pushLog('doorway: ' + prog);
-  } else {
-    lines.push(doorLine);
-  }
+  // With the shim resident the door just runs normally, in local mode, exactly
+  // as it would on a sysop's console. Batch entry points still go through
+  // COMMAND.COM, because some games (LORD) refuse to start as an EXE.
+  lines.push(doorLine);
   lines.push('exit', '');
   fs.writeFileSync(conf, lines.join('\r\n'));
 
