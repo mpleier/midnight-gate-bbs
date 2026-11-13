@@ -323,7 +323,8 @@ async function titleScreen(term, handle) {
   term.cls();
   const W = Math.min(term.cols || 80, 80);
   term.print(2, 1, ' '.repeat(W), 15, 1);
-  term.center(2, 'THE GATE BBS   ·   NODE 1   ·   14400 BAUD', 15, 1);
+  const baudLine = `THE GATE BBS   ·   NODE ${term.node || 1}   ·   ${(term.modem && term.modem.bps) || 14400} BAUD`;
+  term.center(2, baudLine, 15, 1);
   term.print(4, 1, '─'.repeat(W), 8);
   let row = 6;
   for (const line of CASTLE) term.center(row++, line, 11);

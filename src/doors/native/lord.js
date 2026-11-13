@@ -590,7 +590,7 @@ async function readAmount(term, prompt, max, row) {
 async function titleScreen(term, handle, p) {
   term.cls();
   put(term, 2, 1, ' '.repeat(SW), 15, SW);
-  ctr(term, 2, 'THE GATE BBS   \u00b7   NODE 1   \u00b7   14400 BAUD', 15);
+  ctr(term, 2, `THE GATE BBS   \u00b7   NODE ${term.node || 1}   \u00b7   ${(term.modem && term.modem.bps) || 14400} BAUD`, 15);
   rule(term, 4, 8);
   let row = 6;
   for (const line of DRAGON_ART) ctr(term, row++, line, 12);
