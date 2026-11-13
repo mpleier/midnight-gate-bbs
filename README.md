@@ -9,6 +9,13 @@ No npm install. Node 18+ and nothing else.
 
 ![The board, calling in over the web terminal](docs/screenshot.png)
 
+**Windows:** double-click **`START.bat`** in this folder. It starts the board and
+opens your browser at the terminal once the line is up; closing the window hangs up.
+
+**macOS, Linux, git-bash:** `./start.sh`
+
+**Or the long way:**
+
 ```bash
 node server.js
 ```
