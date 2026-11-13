@@ -57,10 +57,29 @@ All rows/cols are 1-based. Output is ANSI; `\n` is translated to CRLF for you.
 | `ctx.door` | this door's manifest |
 
 ## Rules of the house
-
 - Stay inside 80x25. Never write past column 80; pad, do not overflow.
 - Everything must be keyboard driven and abandonable with ESC.
 - Save after every meaningful action so a carrier drop loses nothing.
 - No network, no child processes, no external npm packages.
 - Keep the ANSI style: colours 9-15 for highlights, `─` `═` `│` `█` `░` for furniture.
 - Show the caller's handle and a short status line on each screen.
+
+## Known rough edges (learned writing the built-in doors)
+
+- **`print()` does not clip.** Anything longer than the screen runs off the right
+  edge. Truncate to the column budget yourself; `wrap()` only splits on spaces.
+- **No numeric input helper.** Read digits with `readKey()` and handle
+  `BACKSPACE`, `'ENTER'` and `'ESC'` yourself — a shared `readNumber()` is the
+  first thing every door ends up writing.
+- **`readKey()` can return more than the documented names**: `'BACKSPACE'`,
+  `'TAB'`, `'CTRL-C'`, `'SPACE'` and `'ENTER'` all appear. Treat unknown single
+  characters as themselves.
+- **`pause()` writes a leading CRLF** before its message. If the cursor is on
+  row 24 the message lands on 25 and eats the footer: park the cursor on row 23
+  before pausing.
+- **`center()` uses `term.cols`**, so a client that negotiates a wider terminal
+  drifts off-centre relative to 80-column art. Clamp to 80 for art-aligned text.
+- **`write()` translates `\n` but `print()` does not** — write multi-line blocks
+  with `write()` (or loop `print()` per line), never one `print()` with newlines.
+- **No region-clear helper.** Blanking a box or a status line means printing a
+  run of spaces; write a local `wipe(row, col, width)` and reuse it.
