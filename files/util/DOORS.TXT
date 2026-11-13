@@ -1,0 +1,47 @@
+                     DOOR GAME ETIQUETTE
+                  (and what is on this board)
+
+A door game is a program the board hands you for a while. The board
+takes the call, the game takes over the screen, and when you quit the
+board picks the line back up. That is the whole trick.
+
+THE RULES EVERYONE AGREES ON, MOSTLY
+  1. Do not leave a game running to burn someone else's node. The
+     sysop can see the node table and will see you.
+  2. Turns reset daily. Waiting until 12:01 to attack someone who is
+     asleep is legal and everyone will still hate you for it.
+  3. Do not multi-account. The sysop can see your modem signature, the
+     time you call, and the way you type. You are not as anonymous as
+     you think.
+  4. If you find a bug that gives you infinite gold, tell the sysop.
+     Using it is how a good board dies.
+  5. Do not beg for turns. Earn them: post messages, upload files,
+     call in and be pleasant.
+  6. Attack whoever you like in character. Keep it in character.
+     "Your realm smells of wet wool" is fine. Anything about someone's
+     family is not.
+
+WHAT IS IN THE DOOR MENU HERE
+  LEGEND OF THE RED DRAGON   the classic: forest, town, Violet, the
+                             dragon. Three fights a day and a lot of
+                             patience.
+  DRAGON'S KEEP              our house RPG. Same idea, meaner keep.
+  TRADE WARS 3001            space trading, sixty sectors, real
+                             danger in the lanes.
+  THE PIT                    arena combat, blade against blade.
+  BARREN REALMS              empire building. Farms, armies, grudges.
+  DOMINIONS                  star systems, fog of war, delayed fleets.
+  BLACKJACK                  cards. Real credits. Terrible decisions.
+  FRESHWATER FISHING         nine spots, ten casts, no one shooting
+                             at you. Recommended after a bad day.
+  WASTELAND: OVERKILL        the wasteland, a scanner, and a timing
+                             game that will get you killed.
+
+TIPS FROM PEOPLE WHO HAVE LOST A LOT OF TURNS
+  - In the dragon game, bank your gold before you go into the forest.
+  - In the trading game, never fly with a full hold and no fuel.
+  - In the arena, corners are death. Keep two exits.
+  - In the empire game, farms before armies. Always.
+  - In the fishing game, strike late, not early.
+
+                          -- the sysop of the Gate

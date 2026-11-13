@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Terminal — bulletin board system</title>
+<link rel="stylesheet" href="/vendor/xterm.css">
+<style>
+  :root {
+    --bezel: #0a0d0f;
+    --edge: #1c2620;
+    --green: #55ff88;
+    --amber: #ffb545;
+    --mono: 'IBM Plex Mono', 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace;
+  }
+  html, body { margin: 0; height: 100%; background: #03050a; overflow: hidden; font-family: var(--mono); }
+  body {
+    display: flex; flex-direction: column; align-items: stretch;
+    background:
+      radial-gradient(ellipse at 50% 40%, rgba(50, 120, 80, 0.10), transparent 65%),
+      #03050a;
+  }
+  .frame { flex: 1; display: flex; align-items: center; justify-content: center; padding: 18px; min-height: 0; }
+  .monitor {
+    position: relative;
+    background: linear-gradient(180deg, #0c1113, #070a0b);
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    padding: 16px 16px 10px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.02), inset 0 0 60px rgba(0, 0, 0, 0.9);
+    max-width: calc(100vw - 36px);
+    max-height: calc(100vh - 96px);
+    display: flex; flex-direction: column;
+  }
+  #screen {
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 10px;
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.95), inset 0 0 0 1px rgba(85, 255, 136, 0.06);
+  }
+  .screen-inner { position: absolute; left: 10px; top: 10px; transform-origin: top left; }
+  .xterm-viewport::-webkit-scrollbar { display: none; width: 0 !important; }
+  .xterm-viewport { scrollbar-width: none; -ms-overflow-style: none; }
+  .scanlines {
+    position: absolute; inset: 0; pointer-events: none; z-index: 5;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.30) 0 1px, transparent 1px 3px);
+    opacity: 0.8; transition: opacity 0.25s;
+  }
+  .glow {
+    position: absolute; inset: 0; pointer-events: none; z-index: 4;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+  }
+  .vignette-off .scanlines { opacity: 0; }
+  .vignette-off .glow { opacity: 0; }
+
+  .statusbar {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 10px 4px 2px; font-size: 11px; letter-spacing: 1px; color: #5d6f63;
+  }
+  .led { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 9px var(--green); display: inline-block; margin-right: 7px; }
+  .led.off { background: #7a2020; box-shadow: 0 0 9px #7a2020; }
+  .led.wait { background: var(--amber); box-shadow: 0 0 9px var(--amber); animation: blink 1.1s infinite; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+  .statusbar .right { margin-left: auto; display: flex; gap: 8px; }
+  button.tool {
+    background: transparent; border: 1px solid #1f2d26; color: #7c9184;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px;
+    padding: 5px 10px; cursor: pointer; text-transform: uppercase;
+  }
+  button.tool:hover { color: var(--green); border-color: #2f5741; }
+  button.tool.on { color: var(--green); border-color: #2f5741; }
+  button.tool.pending { color: #ffb545; border-color: #6b4c16; animation: blink 1.4s infinite; }
+
+  .offline {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px; background: rgba(0, 0, 0, 0.88); z-index: 8; text-align: center;
+  }
+  .offline.show { display: flex; }
+  .offline h2 { color: #ff6b6b; letter-spacing: 4px; font-size: 18px; margin: 0; text-shadow: 0 0 14px rgba(255, 60, 60, 0.5); }
+  .offline p { color: #7c9184; font-size: 12px; letter-spacing: 1px; margin: 0; }
+  .offline button {
+    background: transparent; border: 1px solid var(--green); color: var(--green);
+    padding: 10px 20px; letter-spacing: 2px; cursor: pointer; font-family: var(--mono); font-size: 12px;
+  }
+  .hint { text-align: center; color: #6a7d70; font-size: 10px; letter-spacing: 1px; padding: 4px 0 2px; }
+  @media (max-width: 620px) {
+    .monitor { padding: 8px 8px 4px; border-radius: 8px; }
+    .statusbar { font-size: 9px; gap: 8px; }
+    button.tool { font-size: 9px; padding: 4px 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="monitor" id="monitor">
+    <div id="screen">
+      <div class="screen-inner" id="screenInner"><div id="term"></div></div>
+      <div class="glow"></div>
+      <div class="scanlines"></div>
+      <div class="offline" id="offline">
+        <h2>+++ NO CARRIER +++</h2>
+        <p id="offlineWhy">The line was dropped.</p>
+        <button id="redial">REDIAL</button>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span><span class="led wait" id="led"></span><span id="connState">DIALING…</span></span>
+      <span id="baud">14400-8-N-1</span>
+      <span id="nodesOnline">—</span>
+      <span class="right">
+        <button class="tool on" id="btnCrt" title="CRT effect">CRT</button>
+        <button class="tool on" id="btnSound" title="Modem sounds">SOUND</button>
+        <button class="tool" id="btnFull" title="Full screen">FULL</button>
+        <button class="tool" id="btnRedial2" title="Reconnect">RECONNECT</button>
+      </span>
+    </div>
+    <div class="hint">click the screen to type · ESC backs out · Ctrl-C aborts a line · <a href="/" style="color:#3f4f45">leave</a></div>
+  </div>
+</div>
+<script src="/vendor/xterm.js"></script>
+<script src="/vendor/addon-fit.js"></script>
+<script src="/terminal.js"></script>
+</body>
+</html>

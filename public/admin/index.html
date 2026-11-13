@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>SYSOP CONSOLE</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- boot splash: replaced as soon as /api/admin/me answers -->
+<div id="boot" class="boot" role="status">
+  <div>connecting to node 0</div>
+  <div class="boot-bar"><i></i></div>
+</div>
+
+<!-- ------------------------------------------------------------------ login -->
+<section id="login-view" class="login-view hidden" aria-labelledby="login-title">
+  <form id="login-form" class="login-card" autocomplete="on">
+    <h1 id="login-title">SYSOP CONSOLE<span>// operator access only</span></h1>
+    <p class="login-note">Identify yourself. All sessions are logged to the board journal.</p>
+
+    <label class="field" for="login-user">
+      <span class="lbl">Operator</span>
+      <input id="login-user" name="user" type="text" autocomplete="username" autocapitalize="none"
+             spellcheck="false" required autofocus>
+    </label>
+
+    <label class="field" for="login-password">
+      <span class="lbl">Password</span>
+      <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+    </label>
+
+    <p id="login-error" class="form-error" role="alert"></p>
+    <button class="btn primary" type="submit" id="login-submit">Connect</button>
+  </form>
+</section>
+
+<!-- ------------------------------------------------------------- console app -->
+<div id="app" class="app hidden">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">▚</span>
+      <div>
+        <strong id="brand-name">THE GATE</strong>
+        <small>SYSOP CONSOLE</small>
+      </div>
+    </div>
+
+    <nav id="nav" aria-label="Console sections"></nav>
+
+    <div class="sidebar-foot">
+      <div class="conn-line">
+        <span id="conn-dot" class="dot" aria-hidden="true"></span>
+        <span id="me-line">not connected</span>
+      </div>
+      <button id="logout" class="btn ghost small" type="button">Log out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h2 id="section-title">Overview</h2>
+        <p id="section-sub">system status</p>
+      </div>
+      <div class="topbar-right">
+        <span id="clock" class="clock" aria-hidden="true"></span>
+      </div>
+    </header>
+
+    <div id="panel" class="panel" role="region" aria-label="Section content" tabindex="-1"></div>
+
+    <footer class="footer">
+      <span id="footer-board">— board —</span>
+      <span><span class="blink">■</span> SYSOP CONSOLE v1.0 · 80×25 FOREVER</span>
+    </footer>
+  </main>
+</div>
+
+<div id="toasts" class="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
+
+<dialog id="modal" class="modal" aria-modal="true"></dialog>
+
+<noscript>
+  <p style="padding:24px;color:#ff6b5e;font-family:monospace">
+    This console requires JavaScript. Enable it and reload.
+  </p>
+</noscript>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+                   A CALLER'S GUIDE TO MODEMS
+                        for the home board
+                            rev. 1993
+
+So you have a computer, a phone line, and a board you want to call.
+Here is what the numbers on the box actually mean.
+
+WHAT THE SPEEDS ARE
+  300      The stone age. One page of text takes about a minute.
+           Fine for messages. Forget files.
+  1200     The hobby standard of the early eighties. Text flies,
+           files crawl.
+  2400     Comfortable for reading. Most boards still answer at this.
+  9600     The first speed where ANSI art stops feeling like a slideshow.
+  14400    The sweet spot for 1993. Error correction and compression
+           make a real difference on noisy lines.
+  28800+   Expensive, fast, and worth it if you call long distance.
+
+WHAT THE LETTERS MEAN
+  ARQ      Error correction. The modems re-send bad blocks, so a noisy
+           line does not corrupt your download.
+  LAPM     The protocol ARQ uses. You do not need to care, but boards
+           like to print it.
+  V.42BIS  Compression. Text compresses well. A .ZIP file does not, so
+           do not expect miracles on files.
+  V.32BIS  The standard for 14400.
+  V.34     The standard for 28800 and 33600.
+  V.90     The 56K standard. Only works when one end is digital, which
+           is why your 56K modem connects at 33.6 to some boards.
+
+PRACTICAL ADVICE
+  - Buy an external modem with a row of status lights. When a call
+    drops, the lights tell you whether it was the modem or the phone
+    line. Internal cards tell you nothing.
+  - A cheap surge suppressor is worth more than a fancy modem.
+  - Do not put the modem on the same outlet as a refrigerator or an
+    air conditioner. You will hear it in the retrains.
+  - Keep a short phone cord. Long cords pick up noise.
+  - If you get dropped every night at the same time, something in the
+    house is turning on. Find it.
+
+THE HANDSHAKE, BRIEFLY
+  The board answers, both modems whistle at each other, they agree on
+  a speed they both trust, and then you hear the hiss of data. If the
+  whistling repeats, the line is bad and they are trying again at a
+  lower speed. That is normal on a wet night.
+
+  When you see NO CARRIER, the call is over. It is not an insult.
+
+                       -- the sysop of the Gate

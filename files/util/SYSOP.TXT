@@ -1,0 +1,52 @@
+                   SO YOU WANT TO RUN A BOARD
+
+Everyone who has called a BBS for a year thinks about running one.
+Most of them should not. Here is how to find out whether you are the
+exception.
+
+WHAT IT ACTUALLY COSTS
+  A second phone line, every month, forever.
+  A machine that can stay on in a hot room without complaint.
+  A hard drive with room for other people's files.
+  Your evenings. Not because the software needs you, but because the
+  callers do.
+
+THE SOFTWARE
+  Every board package is a different opinion about how a board should
+  feel. Pick one and learn it properly before you customise it. Most
+  new sysops spend three weeks drawing menus and one afternoon on
+  backups, and then lose the message bases to a bad sector.
+
+  Whichever you choose: know how to restore from your own backup
+  before you open the line. Not after.
+
+THE RULES YOU WILL HAVE TO WRITE
+  Write them down before you need them. At minimum:
+    - one account per caller
+    - no uploaded software you do not have the right to share
+    - no posting of phone codes, card numbers, or other people's
+      private business
+    - what happens when someone breaks a rule
+
+  Then apply them evenly, including to the loudest caller, including
+  to your friends. The day you make an exception for a friend is the
+  day the board starts to die.
+
+THE THING NOBODY TELLS YOU
+  A board is a small town with one policeman who also runs the
+  general store. You will spend more time on other people's arguments
+  than on your own hobbies. You will also get messages at 3am from
+  someone who just needs to talk, and that part is worth it.
+
+  If that trade sounds bad to you, be a caller. Callers keep a board
+  alive. There is no shame in it.
+
+THE FIRST WEEK
+  Open with two nodes, not four. You will not have the traffic and
+  you will want the spare line for testing.
+  Post a welcome message before you open. Nothing is lonelier than a
+  board with an empty message base.
+  Set your time limits generously for the first month. You can always
+  tighten them once people are hooked.
+
+                        -- the sysop of the Gate

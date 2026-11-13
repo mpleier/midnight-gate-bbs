@@ -1,0 +1,30 @@
+                    THE TEXFILE AREA: AN INDEX
+
+Everything in this area is plain text, written for this board. Read
+them on the board with the [F]ile areas command, or grab the download
+link if you are calling from a browser.
+
+  MODEMS.TXT     What the speeds and the letters on the box mean, and
+                 how to stop your line from dropping every night.
+
+  ANSI.TXT       How a screen is drawn out of 256 characters. Read
+                 this before you try to draw your own menu.
+
+  DOORS.TXT      Door game etiquette, plus a short guide to every game
+                 in the door menu on this board.
+
+  SYSOP.TXT      What running a board actually costs, the rules you
+                 need to write before you need them, and why the first
+                 week should be two nodes and not four.
+
+  TEXTFILES.TXT  This file. If you are reading it, the index works.
+
+WHAT BELONGS HERE
+  Documents, guides, lists, and anything typed by a person rather than
+  produced by a program. No executables, no archives of somebody
+  else's software, no phone codes.
+
+  If you write something worth reading, upload it and leave a note for
+  the sysop. Credit yourself; unsigned text helps nobody.
+
+                          -- the sysop of the Gate

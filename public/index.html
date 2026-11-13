@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dial in — bulletin board system</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23050907'/><text x='3' y='12' font-family='monospace' font-size='10' fill='%2355ff88'>B</text></svg>">
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" id="brandMark">THE MIDNIGHT GATE</span>
+      <span class="sub" id="brandSub">14400 BAUD · 4 NODES · ONLINE SINCE 1993</span>
+    </div>
+    <nav class="nav">
+      <a href="/" class="active">DIAL IN</a>
+      <a href="/terminal">WEB TERMINAL</a>
+      <a href="/admin/">SYSOP</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <h1 class="logo" id="logo">THE MIDNIGHT GATE</h1>
+      <div class="tagline" id="tagline">WHERE THE NIGHT NEVER ENDS</div>
+      <p class="blurb" id="blurb">
+        A bulletin board system in the old style: ANSI screens, message bases, door games,
+        file areas and a chat room that people actually sit in. Call from a browser or point
+        your telnet client at the board. New users welcome.
+      </p>
+      <div class="actions">
+        <a class="btn" href="/terminal" id="dialBtn">Dial in →</a>
+        <button class="btn secondary" id="telnetCopy">telnet <span id="telnetHost">localhost:2323</span></button>
+        <span class="onair"><span class="dot"></span><span id="onair">1 node online</span></span>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="tile"><div class="k">Callers today</div><div class="v" id="statCalls">—</div><div class="n">since the board went up</div></div>
+    <div class="tile"><div class="k">Users</div><div class="v" id="statUsers">—</div><div class="n">accounts on file</div></div>
+    <div class="tile"><div class="k">Messages</div><div class="v" id="statPosts">—</div><div class="n">on the public boards</div></div>
+    <div class="tile"><div class="k">Files</div><div class="v" id="statFiles">—</div><div class="n">in the file areas</div></div>
+  </div>
+
+  <div class="cols">
+    <div class="panel">
+      <h3>Who is on right now</h3>
+      <div class="body" id="whoList">connecting…</div>
+    </div>
+    <div class="panel">
+      <h3>Last callers</h3>
+      <div class="body" id="callerList">connecting…</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:22px">
+    <h3>Chat room, last few lines</h3>
+    <div class="body" id="chatLog">connecting…</div>
+  </div>
+
+  <div class="panel" style="margin-top:22px">
+    <h3>Board status</h3>
+    <div class="body">
+      <div class="row"><span>Telnet</span><span class="meta" id="telnetLine">—</span></div>
+      <div class="row"><span>Nodes</span><span class="meta" id="nodeLine">—</span></div>
+      <div class="row"><span>SysOp</span><span class="meta" id="sysopLine">—</span></div>
+      <div class="row"><span>Location</span><span class="meta" id="locLine">—</span></div>
+      <div class="row"><span>Software</span><span class="meta" id="softLine">—</span></div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <span id="footNote">ANSI colour required. 80 columns. Set your terminal to 8-N-1.</span>
+    <span>© <span id="year">1993</span> · <a href="/admin/">sysop console</a></span>
+  </footer>
+</div>
+<script src="/index.js"></script>
+</body>
+</html>

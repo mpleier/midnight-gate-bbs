@@ -1,0 +1,53 @@
+                        ANSI ART: A PRIMER
+                     for callers who want to draw
+
+Every board you call is lying to you about its own age. The menus are
+not photographs. They are characters: the same 256 symbols that came
+with the IBM PC in 1981, arranged until they look like a picture.
+
+THE CHARACTER SET
+  Codepage 437 has 256 slots. The first 128 are plain ASCII. The top
+  128 are where the art lives: box drawing lines, block fills, shading
+  patterns, Greek letters, and a handful of card suits that nobody uses.
+
+  The four you will use most:
+      █  full block        full cell of colour
+      ▀  upper half        top half of the cell
+      ▄  lower half        bottom half
+      ░▒▓  shading        25%, 50%, 75% dither
+
+  Two half blocks stacked vertically give you a square. That is how a
+  "pixel" is made in a text mode that has no pixels.
+
+COLOUR
+  Sixteen colours, eight of them bright. Each character can have a
+  foreground and a background, which means you can fake a solid area
+  by setting a background colour and printing spaces. Art packs are
+  mostly background colour and blocks.
+
+  A gradient is just a ramp: pick four colours, walk across the row,
+  step to the next one every few characters. Nobody can tell the
+  difference between a careful ramp and a clever one on a VGA monitor.
+
+DRAWING SOMETHING THAT LOOKS DELIBERATE
+  1. Draw the frame first, in double lines, and keep it straight. An
+     off-by-one border ruins an otherwise good screen.
+  2. Leave a margin. Art that touches the edges looks like a mistake.
+  3. Shade in one direction only. Mixed light sources look like noise.
+  4. Highlights on top and left, shadows on bottom and right. Every
+     logo you have ever admired does exactly this.
+  5. Type is not art. A logo needs weight: fill the letters, then add
+     a one-column extrusion to the right to give it depth.
+
+TOOLS
+  The ANSI editor on this board is your business, but the old hands
+  still use TheDraw and call it done. Whatever you use, save as plain
+  bytes, not as a picture. If it opens in a word processor it is not
+  ANSI.
+
+SENDING ART HERE
+  Upload it in the file area, or leave the sysop a note. Credit
+  yourself. Half the art in this scene is unsigned and the artists
+  deserve better.
+
+                          -- the sysop of the Gate

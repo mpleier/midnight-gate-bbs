@@ -1,0 +1,17 @@
+{
+  "name": "midnight-gate-bbs",
+  "version": "1.0.0",
+  "description": "A dependency-free ANSI bulletin board system for the web and telnet, with nine playable doors, drop-in ANSI art and chat bots.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "art": "node tools/make-art.js",
+    "seed-files": "node tools/seed-files.js",
+    "test": "node test/smoke.js",
+    "test:doors": "node test/doors.js"
+  },
+  "keywords": ["bbs", "ansi", "cp437", "telnet", "retro", "door-games", "bulletin-board"],
+  "engines": { "node": ">=18" },
+  "private": true,
+  "license": "MIT"
+}

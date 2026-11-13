@@ -1,0 +1,102 @@
+{
+  "bbs": {
+    "name": "THE MIDNIGHT GATE",
+    "shortName": "Midnight Gate",
+    "sysop": "SysOp",
+    "location": "Portland, Oregon",
+    "tagline": "Where the night never ends...",
+    "origin": "1:105/42",
+    "software": "GATE BBS v1.0",
+    "maxNodes": 4,
+    "timeLimit": 60,
+    "newUserTime": 30,
+    "allowNewUsers": true,
+    "newUserLevel": 10,
+    "minPassword": 4,
+    "sysopPassword": "change-me",
+    "dialNumbers": [
+      "555-0113",
+      "867-5309"
+    ],
+    "modems": [
+      {
+        "bps": 2400,
+        "connect": "2400/ARQ/V22BIS/LAPM",
+        "name": "USR Sportster 2400"
+      },
+      {
+        "bps": 9600,
+        "connect": "9600/ARQ/V32/LAPM/V42BIS",
+        "name": "USR Sportster 9600"
+      },
+      {
+        "bps": 14400,
+        "connect": "14400/ARQ/V32BIS/LAPM/V42BIS",
+        "name": "USR Sportster 14,400"
+      },
+      {
+        "bps": 28800,
+        "connect": "28800/ARQ/V34/LAPM/V42BIS",
+        "name": "Zoom V.34 28.8"
+      },
+      {
+        "bps": 33600,
+        "connect": "33600/ARQ/V34/LAPM/V42BIS",
+        "name": "USR Courier 33.6"
+      },
+      {
+        "bps": 56000,
+        "connect": "56000/V90/V42BIS",
+        "name": "USR Sportster 56K"
+      }
+    ],
+    "idleTimeout": 300,
+    "requireValidation": false
+  },
+  "network": {
+    "host": "0.0.0.0",
+    "httpPort": 8080,
+    "telnetPort": 2323,
+    "telnetEnabled": true,
+    "publicHost": "localhost"
+  },
+  "web": {
+    "crtEffect": true,
+    "dialupSound": true,
+    "palette": "cga",
+    "fontSize": 17
+  },
+  "ansi": {
+    "artDir": "art",
+    "welcomeArt": "WELCOME.ANS",
+    "mainArt": "MAIN.ANS",
+    "loginArt": "LOGIN.ANS",
+    "goodbyeArt": "GOODBYE.ANS",
+    "newUserArt": "NEWUSER.ANS"
+  },
+  "admin": {
+    "user": "sysop",
+    "passwordHash": "",
+    "salt": ""
+  },
+  "llm": {
+    "enabled": true,
+    "endpoint": "http://127.0.0.1:11434/api/chat",
+    "model": "llama3.1:8b",
+    "timeoutMs": 20000
+  },
+  "doors": {
+    "autoScan": true,
+    "scanIntervalSec": 20,
+    "installDir": "doors/install",
+    "dosboxPath": "",
+    "tcpBridgePort": 2444
+  },
+  "files": {
+    "uploadDir": "files",
+    "maxUploadMB": 32
+  },
+  "moderation": {
+    "wordFilter": []
+  }
+}
