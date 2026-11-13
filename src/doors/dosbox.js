@@ -69,6 +69,15 @@ async function runDos(manager, term, door, installDir, dosboxExe) {
     'c:',
   ];
   if (relDir) lines.push('cd ' + dosPath(relDir));
+  // most classic DOS doors expect a FOSSIL driver to be resident; BNU /F is the
+  // usual incantation (X00 is loaded as a device driver instead)
+  for (const cand of ['BNU.COM', 'X00.EXE']) {
+    if (fs.existsSync(path.join(runDir, cand))) {
+      lines.push(cand === 'BNU.COM' ? 'BNU /F' : 'X00 /Pn');
+      manager.pushLog('fossil: ' + cand + ' loaded before the door');
+      break;
+    }
+  }
   // DOS doors are fussy about how they are launched: LORD refuses to run as
   // LORD.EXE and insists on START.BAT <node> (it passes the node through to the
   // executable, along with its own switches)

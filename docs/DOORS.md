@@ -114,12 +114,23 @@ format), written to `C:\BBS` inside the per-call directory.
 
 Verified here: archive extracts, installs, appears on the menu, LORDCFG writes a
 working `NODE1.DAT`, and DOSBox boots the game to its title screen ("Legend Of the
-Red Dragon — Node 1", 59:34 on the clock). What is *not* verified yet is the game
-writing to COM1: the bridge and DOSBox's nullmodem are proven to carry bytes
-(`echo SERIAL-TEST > COM1` arrives), but LORD 4.02a stays silent on the port and
-renders locally. The remaining step is the one every DOS door needs anyway: a
-FOSSIL driver (X00/BNU) in the guest, with LORDCFG set to `FOSSIL` rather than
-`Internal Com Routines`, which is what real BBSes ran in 1996.
+Red Dragon — Node 1", 59:34 on the clock).
+
+**Known gap.** A FOSSIL driver is now part of the door: `BNU 1.70` (`BNU.COM`,
+`BNU.SYS`, docs) sits in `legord/`, the runner loads it with `BNU /F` before the
+game, and `NODE1.DAT` reads `FOSSIL`, `COMPORT 1`, `NODIRECT`, `BBSDROP C:\BBS`.
+BNU reports itself resident ("1 Port(s) available"), DOSBox's nullmodem carries
+bytes (`echo SERIAL-TEST > COM1` arrives on the socket), and the bridge connects
+when LORD starts — but the game still paints DOSBox's own screen and sends
+nothing over COM1. Until that is solved the door is installed with
+`enabled: false`, so the menu does not offer a door that would show a caller a
+splash and then nothing.
+
+Next things worth trying, in order: X00 1.53 instead of BNU (LORDCFG has a
+dedicated "X00 Weird Fossil Driver" option, which suggests it needs the X00
+quirks); a real UART at a different base (`serial1=nullmodem` with
+`serial2=dongle`); or NetFoss/Net2BBS on the Windows side, which is how DOS doors
+are bridged on NT-family systems.
 
 ## Troubleshooting
 
