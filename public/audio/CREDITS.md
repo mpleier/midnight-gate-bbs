@@ -13,29 +13,40 @@ node tools/check-dialup-audio.js           # measures each stage with a Goertzel
 
 ## What each part is
 
+![The handshake, stage by stage](../../docs/dialup-spectrogram.png)
+
 The order comes from what the sounds actually do, not from an impression of
-them — the phone network carries 300–3400 Hz because that is where speech lives,
-so every modem signal has to fit in that band (and is therefore audible).
+them. The phone network carries 300–3400 Hz because that is where speech lives,
+so every modem signal has to fit in that band — and is therefore audible. That
+single fact is why connecting to the internet used to be something you could
+hear from the next room.
 
-| Time | Sound | Meaning |
+| Time | Sound | What it is doing |
 | --- | --- | --- |
-| 0.0 s | click | handset off the hook |
-| 0.1–3.3 s | 350 + 440 Hz | dial tone: the line is live, dial away |
-| 3.3–4.4 s | pairs of tones | DTMF for the number dialled (`8` = 852 + 1336 Hz, `9` = 852 + 1477 Hz) |
-| 4.5–5.6 s | 440 + 480 Hz | ringback: their line is ringing |
-| 5.8–6.6 s | 2100 Hz, warbling at 15 Hz | answer tone (ANSam): their modem picked up |
-| 6.7–7.2 s | short warbles at 1100/1650/2100 Hz | V.8 exchange: "what speeds and features do you have?" |
-| 7.3–7.7 s | 980/1180 Hz alternating, 300 baud | V.21: the low-speed channel that agrees the details |
-| 7.8–8.7 s | phase clicks, rising sweep, warble | line probe and training: measuring the line for echo and noise |
-| 9.5–11.4 s | band-limited hiss | carrier: data, and the reason you got kicked off when someone picked up the phone |
+| 0.00 s | click | the handset lifts |
+| 0.08–3.28 s | 350 + 440 Hz | dial tone: the line is live, dial away |
+| 3.34–4.39 s | pairs of tones | DTMF for the number dialled (`8` = 852 + 1336 Hz, `9` = 852 + 1477 Hz) |
+| 4.50–5.60 s | 440 + 480 Hz | ringback: their line is ringing |
+| 5.62–6.47 s | 2100 Hz, warble, little clicks | **ANSam**, the answer tone: their modem picked up. The tone is amplitude-modulated at 15 Hz and its phase flips 180° every 450 ms so that echo cancellers on the line cannot notch it out — the flips are the clicks |
+| 6.50–7.20 s | 980/1180 Hz FSK, 300 baud | **V.8 call menu (CM)**: the caller lists the speeds and features it can do, on V.21 channel 1 |
+| 7.22–7.92 s | 1650/1850 Hz FSK, 300 baud | **V.8 joint menu (JM)**: the answering modem replies on channel 2, and the two settle on a standard |
+| 7.96–8.46 s | short tones stepping up | **line probe**: measuring response and delay across the band so a symbol rate can be chosen |
+| 8.46–9.46 s | the screech | **training**: the equalisers converge. This is where the speed is decided, which is why people could hear whether a call would come up at 33.6k or crawl in at 14.4k |
+| 9.51–11.45 s | band-limited hiss | **data**: you are on, and the line goes quiet-but-loud until the next packet or the next person picks up the phone |
 
-The training stage is the one that decides the speed: the noisier the line, the
-lower the constellation it can carry, which is why people could hear whether a
-call would come up at 33.6k or crawl in at 14.4k.
+Each stage is checked by frequency, not by ear: `node tools/check-dialup-audio.js`
+runs a Goertzel filter over the rendered wav and asserts that the dial tone has
+350 and 440 Hz, that the answer tone has 2100 Hz and its 15 Hz sidebands at 2085
+and 2115 Hz, that the call menu really is on 980/1180 Hz and the joint menu on
+1650/1850 Hz, and that the trailer is energy rather than silence. Thirteen checks,
+same idea as reading the screen of a terminal test.
 
-Sources for the anatomy: [What the dial-up sound was actually
-saying](https://www.youtube.com/watch?v=raik_i8VFvo) (Mixed Signals), [Why did
-dialup modems make
+Sources for the anatomy: **["Sound of the dialup modem
+explained"](https://www.youtube.com/watch?v=abapFJN6glo)** (bialasiczek, using
+Oona Räisänen's [annotated
+spectrogram](https://www.windytan.com/2012/11/the-sound-of-dialup-pictured.html)),
+[What the dial-up sound was actually saying](https://www.youtube.com/watch?v=raik_i8VFvo)
+(Mixed Signals), [Why did dialup modems make
 noise?](https://superuser.com/questions/477358/why-dialup-modems-make-noise) on
 Super User, and the ELI5 thread [Why did dialup modems make sound in the
 90s?](https://www.reddit.com/r/explainlikeimfive/comments/1dcwa4d/).

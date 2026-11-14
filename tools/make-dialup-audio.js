@@ -2,9 +2,11 @@
 // Renders the dial-up handshake as audio, from the anatomy of a real call:
 //
 //   off-hook click -> dial tone (350 + 440 Hz) -> DTMF for the number ->
-//   ringback (440 + 480 Hz) -> answer tone (2100 Hz, 15 Hz ANSam warble) ->
-//   V.8 capability exchange -> V.21 beeps (980/1180 Hz, 300 baud) ->
-//   line probe / training sweeps -> carrier hiss
+//   ringback (440 + 480 Hz) -> answer tone (ANSam: 2100 Hz, 15 Hz amplitude
+//   modulation, 180-degree phase reversals every 450 ms) -> V.8 call menu from
+//   the caller (V.21 channel 1, 980/1180 Hz, 300 baud) -> V.8 joint menu from
+//   the answerer (channel 2, 1650/1850 Hz) -> line probe -> training
+//   (the screech, where the speed is decided) -> carrier hiss
 //
 // Everything is band-limited to 300-3400 Hz, the passband of a phone line, and
 // nothing is sampled from a recording, so the file is ours to ship.
@@ -64,38 +66,51 @@ function tone(freq, start, dur, gain = 0.08, type = 'sine') {
   }
 }
 
-// amplitude-modulated tone: 2100 Hz answer tone with a 15 Hz warble (ANSam)
-function warble(freq, start, dur, gain = 0.1, modHz = 15, depth = 0.5) {
+// ANSam: the answer tone of the far end's modem. 2100 Hz, amplitude-modulated
+// at 15 Hz, with the phase reversed by 180 degrees every 450 ms so that echo
+// cancellers on the line cannot notch it out. The reversals are audible as
+// little clicks on top of the warble.
+function ansam(freq, start, dur, gain = 0.1, modHz = 15) {
   const i0 = Math.max(0, Math.round(start * SR));
   const len = Math.min(buf.length - i0, Math.round(dur * SR));
   if (len <= 0) return;
   let phase = 0;
+  let flip = 1;
+  const vsr = Math.round(0.45 * SR);
+  let nextFlip = vsr;
   for (let i = 0; i < len; i++) {
+    if (i >= nextFlip) {
+      flip = -flip;
+      nextFlip += vsr;
+    }
     const t = i / SR;
-    const env = Math.min(1, i / (0.01 * SR)) * Math.min(1, (len - i) / (0.02 * SR));
-    const am = gain * ((1 - depth) + depth * (0.5 + 0.5 * Math.sin(2 * Math.PI * modHz * t)));
+    const am = 1 + 0.2 * Math.sin(2 * Math.PI * modHz * t);
+    const env = Math.min(1, i / (0.005 * SR)) * Math.min(1, (len - i) / (0.02 * SR));
     phase += (2 * Math.PI * freq) / SR;
-    buf[i0 + i] += Math.sin(phase) * am * env;
+    buf[i0 + i] += Math.sin(phase) * flip * am * gain * env;
   }
 }
 
-// continuous-phase FSK, the V.21 300-baud beeps
-function fsk(start, dur, f0, f1, baud = 300, gain = 0.07) {
+// V.21: the 300-baud FSK channel V.8 negotiates on. Channel 1 (980/1180 Hz) is
+// the caller's, channel 2 (1650/1850 Hz) is the answerer's. Real traffic: a
+// preamble of flags, then the menu bytes.
+function v21(start, dur, f0, f1, gain = 0.07) {
   const i0 = Math.max(0, Math.round(start * SR));
   const len = Math.min(buf.length - i0, Math.round(dur * SR));
   if (len <= 0) return;
+  const bits = [];
+  const push = (byte) => {
+    for (let b = 0; b < 8; b++) bits.push((byte >> b) & 1);
+  };
+  push(0x7e);
+  push(0x7e);
+  for (let k = 0; k < 48; k++) push((Math.random() * 256) | 0);
+  const spb = SR / 300;
   let phase = 0;
-  let bit = 0;
-  let acc = 0;
-  const step = 1 / baud;
   for (let i = 0; i < len; i++) {
-    const t = i / SR;
-    if (t >= acc) {
-      acc += step;
-      bit ^= 1;
-    }
+    const bit = bits[Math.floor(i / spb) % bits.length];
     phase += (2 * Math.PI * (bit ? f1 : f0)) / SR;
-    const env = Math.min(1, i / (0.01 * SR)) * Math.min(1, (len - i) / (0.02 * SR));
+    const env = Math.min(1, i / (0.005 * SR)) * Math.min(1, (len - i) / (0.01 * SR));
     buf[i0 + i] += Math.sin(phase) * gain * env;
   }
 }
@@ -168,42 +183,43 @@ tone(440, t, 1.15, 0.045);
 tone(480, t, 1.15, 0.045);
 t += 1.25;
 
-// answer tone: their modem picked up, 2100 Hz with the 15 Hz ANSam warble
+// answer tone: their modem picked up. ANSam, with its phase reversals
 click(t, 0.12);
-warble(2100, t + 0.03, 0.85, 0.1, 15, 0.5);
-t += 0.95;
+ansam(2100, t + 0.02, 0.85, 0.1, 15);
+t += 0.9;
 
-// V.8: the two modems compare capabilities
-warble(1100, t, 0.16, 0.06, 12, 0.3);
-warble(1650, t + 0.18, 0.16, 0.06, 12, 0.3);
-warble(2100, t + 0.36, 0.16, 0.06, 12, 0.3);
-t += 0.56;
+// V.8: the caller announces the speeds and features it can do - the call menu,
+// CM, on V.21 channel 1 (980/1180 Hz)
+v21(t, 0.7, 980, 1180, 0.075);
+t += 0.72;
 
-// V.21 handshake: 300 baud beeps
-fsk(t, 0.46, 980, 1180, 300, 0.095);
+// the answering modem replies with its own menu (JM) on channel 2 (1650/1850 Hz)
+v21(t, 0.7, 1650, 1850, 0.07);
+t += 0.74;
+
+// line probe: short tones stepping up the band with phase hits at each step,
+// the modems measuring the line's response and delay before agreeing a symbol rate
+const probeTones = [800, 1000, 1250, 1500, 1800, 2100];
+for (let i = 0; i < probeTones.length; i++) {
+  click(t + i * 0.07, 0.045);
+  tone(probeTones[i], t + i * 0.07, 0.06, 0.065);
+}
 t += 0.5;
 
-// line probe: phase hits and a rising sweep, then the training warble
-for (let i = 0; i < 4; i++) click(t + i * 0.09, 0.09);
-sweep(1150, 2200, t + 0.05, 0.3, 0.075);
-t += 0.4;
-sweep(1500, 2500, t, 0.16, 0.07);
-sweep(1500, 2500, t + 0.18, 0.16, 0.07);
-sweep(2500, 1500, t + 0.36, 0.18, 0.07);
-t += 0.6;
-
-// final screech into carrier: a slower probe negotiates a slower speed
-const probe = BPS >= 28800 ? 0.55 : 0.95;
-bandNoise(t, 0.7, 0.09, 1600, 0.6);
-tone(2400, t, 0.4, 0.03, 'square');
-sweep(2400, 1300, t, 0.65, 0.04);
-t += 0.75;
-bandNoise(t, 0.35, 0.05, 1800, 0.5);
+// training: the long screech. Carrier with sweeps and noise while the
+// equalisers converge - this is where the speed is decided, and why you could
+// hear whether a call would come up fast or crawl in
+sweep(1200, 2400, t, 0.35, 0.07);
+bandNoise(t, 0.95, 0.075, 1700, 0.7);
+sweep(2400, 1300, t + 0.3, 0.55, 0.05);
+tone(1800, t + 0.15, 0.8, 0.045, 'square');
+t += 1.0;
 
 // carrier: data, at a level you would hear through the speaker
-t += 0.4;
-bandNoise(t, Math.max(0.6, TOTAL - t - 0.35), 0.028, 1900, 0.7);
-tone(1800, t, Math.max(0.6, TOTAL - t - 0.35), 0.012);
+t += 0.05;
+const dataLen = Math.max(0.6, TOTAL - t - 0.35);
+bandNoise(t, dataLen, 0.028, 1900, 0.7);
+tone(1800, t, dataLen, 0.012);
 
 /* -------------------------------------------------- phone-line passband ---- */
 function biquad(signal, type, freq, q) {

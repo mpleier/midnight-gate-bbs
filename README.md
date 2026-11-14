@@ -35,7 +35,7 @@ ringback, answer tone, the full staged 14.4k handshake — played as real audio 
 browser from `public/audio/dialup.mp3` — a stage-by-stage reproduction of a real
 dial-up call, rendered by `tools/make-dialup-audio.js` ([what each part
 is](public/audio/CREDITS.md)). If that file is missing the board falls back to the
-synthesised handshake: off-hook click, dial tone (350+440 Hz), DTMF for whichever number
+synthesised handshake ([pictured stage by stage](docs/dialup-spectrogram.png)): off-hook click, dial tone (350+440 Hz), DTMF for whichever number
 was dialled, ringback (440+480 Hz), 2100 Hz ANSam answer tone with its 15 Hz warble, V.8
 capability warble, V.21 handshake beeps, training sweeps and the final data hiss, all
 band-limited to 300–3400 Hz. `?synth=1` forces the synth so you can hear both. Pressing a

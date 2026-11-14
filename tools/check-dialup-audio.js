@@ -27,7 +27,7 @@ function energy(freq, start, dur) {
   return Math.sqrt(Math.max(0, s1 * s1 + s2 * s2 - coeff * s1 * s2)) / len;
 }
 
-const bands = [300, 350, 440, 480, 697, 770, 852, 941, 980, 1180, 1209, 1336, 1477, 1650, 1800, 2100, 2400, 2600];
+const bands = [300, 350, 440, 480, 697, 770, 852, 941, 980, 1180, 1209, 1336, 1477, 1650, 1800, 1850, 2085, 2100, 2115, 2400, 2600];
 function dom(start, dur) {
   return bands
     .map((f) => [f, energy(f, start, dur)])
@@ -42,10 +42,11 @@ const stages = [
   ['first DTMF digit (8: 852+1336)', 3.36, 0.09],
   ['last DTMF digit (9: 852+1477)', 4.24, 0.09],
   ['ringback', 4.70, 0.9],
-  ['answer tone', 6.00, 0.6],
-  ['V.8 warble', 6.95, 0.4],
-  ['V.21 beeps', 7.28, 0.4],
-  ['training', 8.00, 0.35],
+  ['answer tone (ANSam 2100)', 5.85, 0.6],
+  ['V.8 call menu, caller (980/1180)', 6.65, 0.6],
+  ['V.8 joint menu, answerer (1650/1850)', 7.40, 0.6],
+  ['line probe', 8.15, 0.4],
+  ['training', 8.75, 0.6],
   ['carrier', 10.40, 0.6],
 ];
 
@@ -62,9 +63,13 @@ const checks = [
   ['DTMF 8 has 852+1336', has(852, 3.36, 0.08, 0.003) && has(1336, 3.36, 0.08, 0.003)],
   ['DTMF 9 has 1477', has(1477, 4.24, 0.08, 0.003)],
   ['ringback has 480', has(480, 4.75, 0.8, 0.002)],
-  ['answer tone is 2100', has(2100, 6.05, 0.5, 0.004)],
-  ['V.21 has 980/1180', has(980, 7.28, 0.38, 0.0015) || has(1180, 7.28, 0.38, 0.0015)],
-  ['carrier is energy, not silence', energy(1900, 9.8, 0.8) > 0.0008],
+  ['answer tone is 2100', has(2100, 5.95, 0.5, 0.004)],
+  ['answer tone has its 15 Hz sidebands', has(2085, 5.95, 0.5, 0.0008) || has(2115, 5.95, 0.5, 0.0008)],
+  ['call menu is on 980/1180', has(980, 6.7, 0.55, 0.0015) && has(1180, 6.7, 0.55, 0.0015)],
+  ['joint menu is on 1650/1850', has(1650, 7.45, 0.5, 0.0015) && has(1850, 7.45, 0.5, 0.0015)],
+  ['line probe has tones', energy(1250, 8.2, 0.05) > 0.002 || energy(1500, 8.2, 0.05) > 0.002],
+  ['training is loud', energy(1800, 8.8, 0.5) > 0.004],
+  ['carrier is energy, not silence', energy(1900, 9.9, 0.8) > 0.0008],
   ['no clipping', Math.max(...Array.from(pcm.slice(0, 20000)).map(Math.abs)) < 1],
 ];
 for (const [name, pass] of checks) {
