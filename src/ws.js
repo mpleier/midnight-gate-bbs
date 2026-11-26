@@ -25,19 +25,37 @@ function frame(payload, opcode = 1) {
 }
 
 class WSConnection {
-  constructor(socket, req) {
+  constructor(socket, req, opts = {}) {
     this.socket = socket;
     this.req = req;
     this.closed = false;
     this.buf = Buffer.alloc(0);
     this.onMessage = () => {};
     this.onClose = () => {};
+    // proxies and tunnels (Cloudflare, ngrok, a home router's NAT table) drop a
+    // socket that has been silent for a while: a caller reading the main menu
+    // never sends anything, so the board pings on its own and the browser's
+    // automatic pong keeps both directions warm.
+    this.lastSeen = Date.now();
+    this.pingMs = Number(opts.pingMs) || 0;
+    if (this.pingMs > 0) {
+      this.pingTimer = setInterval(() => this._ping(), this.pingMs);
+      if (this.pingTimer.unref) this.pingTimer.unref(); // a test run must still exit
+    }
     socket.on('data', (d) => this._read(d));
     socket.on('close', () => this._close());
     socket.on('error', () => this._close());
   }
 
+  _ping() {
+    if (this.closed) return;
+    // three silent intervals means the far end is gone, whatever the TCP state says
+    if (Date.now() - this.lastSeen > this.pingMs * 3) return this.close();
+    this.socket.write(frame(Buffer.alloc(0), 9));
+  }
+
   _read(data) {
+    this.lastSeen = Date.now();
     this.buf = Buffer.concat([this.buf, data]);
     for (;;) {
       if (this.buf.length < 2) return;
@@ -88,8 +106,14 @@ class WSConnection {
     this.socket.write(frame(str, 1));
   }
 
+  ping() {
+    if (this.closed || !this.socket.writable) return;
+    this.socket.write(frame(Buffer.alloc(0), 9));
+  }
+
   close() {
     if (this.closed) return;
+    if (this.pingTimer) clearInterval(this.pingTimer);
     try {
       this.socket.write(frame(Buffer.alloc(0), 8));
     } catch {}
@@ -103,11 +127,12 @@ class WSConnection {
   _close() {
     if (this.closed) return;
     this.closed = true;
+    if (this.pingTimer) clearInterval(this.pingTimer);
     this.onClose();
   }
 }
 
-function attachWebSocket(server, path = '/ws', onConnection = () => {}) {
+function attachWebSocket(server, path = '/ws', onConnection = () => {}, opts = {}) {
   server.on('upgrade', (req, socket) => {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname !== path) {
@@ -126,7 +151,7 @@ function attachWebSocket(server, path = '/ws', onConnection = () => {}) {
         'Connection: Upgrade\r\n' +
         `Sec-WebSocket-Accept: ${accept}\r\n\r\n`
     );
-    const conn = new WSConnection(socket, req);
+    const conn = new WSConnection(socket, req, opts);
     onConnection(conn, url);
   });
 }

@@ -2,6 +2,7 @@
 // Headless smoke test: boots the server, drives a telnet session end to end,
 // checks the web terminal websocket, the admin API and the door installer.
 const net = require('node:net');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -52,13 +53,80 @@ async function waitFor(session, pattern, timeout = 6000) {
   return false;
 }
 
+// A raw websocket client: enough of RFC6455 to upgrade, send one masked control
+// frame and watch what comes back. Used to prove the socket stays warm through a
+// proxy that would otherwise drop a silent one.
+function wsProbe({ marker = '\x00ZZPINGZZ', ms = 2600 } = {}) {
+  return new Promise((resolve) => {
+    const out = { upgraded: false, pings: 0, text: '', detail: '' };
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { sock.destroy(); } catch {}
+      resolve(out);
+    };
+    const timer = setTimeout(finish, ms);
+    const sock = net.connect(HTTP_PORT, '127.0.0.1');
+    const maskFrame = (str, opcode = 1) => {
+      const payload = Buffer.from(str, 'utf8');
+      const mask = crypto.randomBytes(4);
+      const masked = Buffer.from(payload.map((b, i) => b ^ mask[i % 4]));
+      return Buffer.concat([Buffer.from([0x80 | opcode, 0x80 | payload.length]), mask, masked]);
+    };
+    let buf = Buffer.alloc(0);
+    let handshake = false;
+    sock.on('connect', () => {
+      sock.write(
+        'GET /ws HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' +
+          'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n'
+      );
+    });
+    sock.on('error', () => finish());
+    sock.on('close', () => finish());
+    sock.on('data', (d) => {
+      buf = Buffer.concat([buf, d]);
+      if (!handshake) {
+        const end = buf.indexOf('\r\n\r\n');
+        if (end < 0) return;
+        const head = buf.slice(0, end).toString('latin1');
+        out.upgraded = /^HTTP\/1\.1 101/.test(head);
+        out.detail = head.split('\r\n')[0];
+        buf = buf.slice(end + 4);
+        handshake = true;
+        sock.write(maskFrame(marker, 1)); // the board must not see this as typing
+      }
+      for (;;) {
+        if (buf.length < 2) return;
+        const opcode = buf[0] & 0x0f;
+        let len = buf[1] & 0x7f;
+        let off = 2;
+        if (len === 126) {
+          if (buf.length < 4) return;
+          len = buf.readUInt16BE(2);
+          off = 4;
+        }
+        if (buf.length < off + len) return;
+        const payload = buf.slice(off, off + len);
+        buf = buf.slice(off + len);
+        if (opcode === 9) {
+          out.pings++;
+          sock.write(maskFrame('', 10)); // a browser answers a ping by itself
+        } else if (opcode === 1) out.text += payload.toString('utf8');
+        else if (opcode === 8) return finish();
+      }
+    });
+  });
+}
+
 async function main() {
   const tmpData = path.join(ROOT, 'test', '.tmp-data');
   fs.rmSync(tmpData, { recursive: true, force: true });
   fs.mkdirSync(tmpData, { recursive: true });
   const srv = spawn(process.execPath, ['server.js'], {
     cwd: ROOT,
-    env: { ...process.env, PORT: String(HTTP_PORT), TELNET_PORT: String(TELNET_PORT), BBS_DATA_DIR: tmpData },
+    env: { ...process.env, PORT: String(HTTP_PORT), TELNET_PORT: String(TELNET_PORT), BBS_DATA_DIR: tmpData, BBS_WS_PING_MS: '700' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let log = '';
@@ -87,6 +155,11 @@ async function main() {
   const status = await (await fetch(BASE + '/api/status')).json();
   check('status api returns board name', /MIDNIGHT|BBS/i.test(status.name), status.name);
   check('status reports nodes field', typeof status.online === 'number');
+  check(
+    'status carries what a directory listing asks for',
+    !!status.platform && !!status.founded && /\/terminal$/.test(status.web || ''),
+    `${status.platform} · ${status.founded} · ${status.web}`
+  );
 
   const landing = await (await fetch(BASE + '/')).text();
   check('landing page served', landing.includes('MIDNIGHT') || landing.includes('DIAL IN'));
@@ -96,6 +169,12 @@ async function main() {
 
   const xterm = await fetch(BASE + '/vendor/xterm.js');
   check('xterm.js vendored', xterm.ok && Number(xterm.headers.get('content-length') || 0) > 100000);
+
+  const wsr = await wsProbe();
+  check('web terminal socket upgrades', wsr.upgraded, wsr.detail);
+  check('board writes the logon screen over the socket', wsr.text.length > 40, `${wsr.text.length} chars`);
+  check('a silent socket is kept warm with protocol pings', wsr.pings >= 1, `${wsr.pings} ping(s)`);
+  check('a NUL-prefixed control frame is never typed at the board', !wsr.text.includes('ZZPINGZZ'));
 
   const audio = await fetch(BASE + '/audio/dialup.mp3');
   const audioType = audio.headers.get('content-type') || '';

@@ -63,9 +63,14 @@ function statusPayload() {
     sysop: config.get('bbs.sysop'),
     location: config.get('bbs.location'),
     software: config.get('bbs.software'),
+    // a listing service (bbsscene.com and its like) wants a board's platform and
+    // the year it first answered, not just its name: both are here, plainly
+    platform: config.get('bbs.platform'),
+    founded: config.get('bbs.founded'),
     online: nodes.count(),
     maxNodes: config.get('bbs.maxNodes'),
     telnet: `${config.get('network.publicHost')}:${config.get('network.telnetPort')}`,
+    web: `http://${config.get('network.publicHost')}:${config.get('network.httpPort')}/terminal`,
     dialNumbers: config.get('bbs.dialNumbers') || [],
     modems: config.get('bbs.modems') || [],
     nodes: nodes.online(),
@@ -160,8 +165,9 @@ function createServer(onLog = console.log) {
     const modem = url && url.searchParams.get('modem');
     if (modem) term.modemBps = Number(String(modem).replace(/\D/g, '')) || null;
     conn.onMessage = (txt) => {
-      // a resize ping from the client is ignored: the board is 80x25, as it should be
-      if (txt.startsWith('\x00resize')) return;
+      // a control frame from the web client starts with NUL (a keepalive or a
+      // resize note) and is never a keystroke: the board is 80x25, as it should be
+      if (txt.startsWith('\x00')) return;
       term.feed(txt);
     };
     conn.onClose = () => term.hangup('CARRIER LOST');
@@ -172,7 +178,7 @@ function createServer(onLog = console.log) {
         term.write('\r\n+++ CARRIER LOST +++\r\n');
       } catch {}
     });
-  });
+  }, { pingMs: Number(process.env.BBS_WS_PING_MS) || 45000 });
 
   return server;
 }

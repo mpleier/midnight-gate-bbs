@@ -16,6 +16,10 @@ const DEFAULTS = {
     tagline: 'Where the night never ends...',
     origin: '1:105/42',
     software: 'GATE BBS v1.0',
+    // what a directory listing asks for: the machine class and the year the
+    // board first answered, alongside the name, city and number
+    platform: 'IBM PC',
+    founded: 1993,
     maxNodes: 4,
     timeLimit: 60,
     newUserTime: 30,
