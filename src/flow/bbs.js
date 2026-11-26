@@ -192,7 +192,14 @@ async function runSession(term) {
       }
     };
     term.cls();
-    term.write('\r\n\r\n');
+    // The first screen names the board and the software behind it, the way a board
+    // did the instant it answered. A terminal that picks its emulation by sniffing
+    // the opening bytes (DIALTONE and its like) then has something to match instead
+    // of a blank screen and a modem noise.
+    term.write(
+      `\x1b[0;36m${config.get('bbs.name')}\x1b[0;90m  ·  ${config.get('bbs.software')}  ·  ANSI/CP437 80x25  ·  8-N-1\x1b[0m\r\n`
+    );
+    term.write('\r\n');
     term.write(`ATDT ${dialed}\r\n`);
     await wait(600);
     term.write('RING\r\n');

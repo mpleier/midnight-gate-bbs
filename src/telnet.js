@@ -1,7 +1,8 @@
 'use strict';
-// Telnet front door: RFC854 negotiation lite, NAWS window size, ANSI detect.
+// Telnet front door: RFC854 negotiation lite, NAWS window size, TTYPE, ANSI detect.
 const net = require('node:net');
 const Terminal = require('./terminal');
+const cp437 = require('./cp437');
 
 const IAC = 255;
 const DONT = 254;
@@ -26,6 +27,7 @@ function attachTelnet(server, { onConnection, log = () => {} } = {}) {
       let inSub = false;
       let subOpt = 0;
       let sub = [];
+      let askedType = false;
 
       const term = new Terminal({
         kind: 'telnet',
@@ -33,8 +35,11 @@ function attachTelnet(server, { onConnection, log = () => {} } = {}) {
         cols,
         rows,
         ansi: true,
+        // an ANSI-BBS board speaks CP437, not UTF-8: the box-drawing and block
+        // glyphs a caller's emulation expects are single OEM bytes (0xC9, 0xCD,
+        // 0xDB), and art goes out exactly as the file was drawn
         send: (s) => {
-          if (socket.writable) socket.write(Buffer.from(s, 'utf8'));
+          if (socket.writable) socket.write(cp437.encode(s));
         },
         close: () => {
           try {
@@ -61,7 +66,11 @@ function attachTelnet(server, { onConnection, log = () => {} } = {}) {
         while (i < buf.length) {
           const b = buf[i];
           if (b !== IAC) {
-            if (!inSub) out.push(b);
+            // inside a subnegotiation every byte after the option code is payload:
+            // the NAWS window (four bytes) or the TTYPE name. Dropping them here is
+            // why the window size used to be ignored no matter what the client sent
+            if (inSub) sub.push(b);
+            else out.push(b);
             i++;
             continue;
           }
@@ -87,13 +96,21 @@ function attachTelnet(server, { onConnection, log = () => {} } = {}) {
               if (rows > 8 && rows < 200) term.rows = rows;
               term.emit('resize', { cols: term.cols, rows: term.rows });
             }
+            // RFC 1091: 0 = IS, and the name follows it
+            if (inSub && subOpt === OPT_TTYPE && sub.length >= 2 && sub[0] === 0) {
+              const name = Buffer.from(sub.slice(1)).toString('latin1').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 40);
+              if (name && !term.terminalType) {
+                term.terminalType = name;
+                log(`telnet terminal: ${name} (${term.remote})`);
+              }
+            }
             inSub = false;
             i += 2;
             continue;
           }
           if (inSub) {
-            if (!(cmd === IAC && buf[i + 1] === SE)) sub.push(b);
-            i++;
+            // IAC inside a subnegotiation: swallow the pair, keep collecting
+            i += 2;
             continue;
           }
           if (cmd === DO || cmd === DONT || cmd === WILL || cmd === WONT) {
@@ -101,6 +118,14 @@ function attachTelnet(server, { onConnection, log = () => {} } = {}) {
             if (opt === undefined) break;
             if (cmd === DO && (opt === OPT_NAWS || opt === OPT_TTYPE)) {
               socket.write(Buffer.from([IAC, WILL, opt]));
+            }
+            // RFC 1091: once the caller agrees to TTYPE, ask which terminal it is.
+            // We already offered DO TTYPE, but a board that never sends SEND never
+            // learns the answer, and a client that switches emulation per board has
+            // no way to be told apart in the caller list
+            if (cmd === WILL && opt === OPT_TTYPE && !askedType) {
+              askedType = true;
+              socket.write(Buffer.from([IAC, SB, OPT_TTYPE, 1, IAC, SE]));
             }
             i += 3;
             continue;

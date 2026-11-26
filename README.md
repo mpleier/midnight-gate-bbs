@@ -30,6 +30,14 @@ board, and change the admin password from the console's Config page).
 
 ## What it actually does
 
+**The two wires don't speak the same alphabet.** A telnet caller gets the board as
+ANSI-BBS over CP437, 8-N-1 — the OEM bytes a DOS-era emulation draws (`0xC9 0xCD 0xBB`
+for a box corner), with art going out exactly as the `.ANS` file was drawn. The web
+terminal gets the same session as UTF-8 for xterm.js. Anything typographic the copy uses
+and CP437 lacks (em dashes, curly quotes) is transliterated to ASCII rather than dropped
+as a block character. The board also answers `TERMINAL-TYPE` (RFC 1091): it asks once a
+caller agrees, records the name, logs it, and reports it in `/api/status`.
+
 **Calling in.** A dial-in sequence (`ATDT 867-5309` or `ATDT 555-0113`, picked per call),
 ringback, answer tone, the full staged 14.4k handshake — played as real audio in the
 browser from `public/audio/dialup.mp3` — a stage-by-stage reproduction of a real

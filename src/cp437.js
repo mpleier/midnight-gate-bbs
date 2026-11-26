@@ -23,10 +23,19 @@ function decode(buf) {
   return out;
 }
 
+// A board writes prose in Unicode (em dashes, curly quotes, ellipses) but the
+// OEM character set has no such glyphs: transliterate the common ones instead of
+// dropping a block character into the middle of a sentence
+const TRANSLIT = {
+  '\u2014': '-', '\u2013': '-', '\u2018': "'", '\u2019': "'",
+  '\u201c': '"', '\u201d': '"', '\u2026': '...', '\u00a0': ' ',
+};
+
 function encode(str) {
   const bytes = [];
   for (const ch of str) {
     if (FROM_UNICODE.has(ch)) bytes.push(FROM_UNICODE.get(ch));
+    else if (TRANSLIT[ch]) for (const c of TRANSLIT[ch]) bytes.push(c.charCodeAt(0));
     else {
       const cp = ch.codePointAt(0);
       bytes.push(cp < 128 ? cp : 0xfe);

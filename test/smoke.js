@@ -3,6 +3,7 @@
 // checks the web terminal websocket, the admin API and the door installer.
 const net = require('node:net');
 const crypto = require('node:crypto');
+const cp437 = require('../src/cp437');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -23,7 +24,9 @@ function connectTelnet() {
     const sock = net.connect(TELNET_PORT, '127.0.0.1');
     let out = '';
     sock.on('data', (d) => {
-      out += d.toString('utf8');
+      // the telnet wire is CP437, so decode it as such: this is what a real
+      // caller's emulation sees, not what the web terminal sees
+      out += cp437.decode(d);
       resolve(session);
     });
     sock.on('error', reject);
@@ -120,6 +123,37 @@ function wsProbe({ marker = '\x00ZZPINGZZ', ms = 2600 } = {}) {
   });
 }
 
+// A telnet client that negotiates TERMINAL-TYPE the way a real one does and keeps
+// the raw bytes, so the board's own encoding can be inspected instead of assumed.
+function telnetProbe(ms = 8000) {
+  return new Promise((resolve) => {
+    const out = { bytes: Buffer.alloc(0), text: '', askedType: false };
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      try { sock.destroy(); } catch {}
+      resolve(out);
+    };
+    const sock = net.connect(TELNET_PORT, '127.0.0.1');
+    setTimeout(finish, ms);
+    sock.on('error', finish);
+    sock.on('close', finish);
+    sock.on('connect', () => setTimeout(() => sock.write(Buffer.from([255, 251, 24])), 500)); // WILL TTYPE
+    sock.on('data', (d) => {
+      out.bytes = Buffer.concat([out.bytes, d]);
+      out.text = cp437.decode(out.bytes);
+      // IAC SB TTYPE SEND IAC SE -> answer IAC SB TTYPE IS "ANSI-BBS" IAC SE
+      if (!out.askedType && out.bytes.includes(Buffer.from([255, 250, 24, 1, 255, 240]))) {
+        out.askedType = true;
+        sock.write(
+          Buffer.concat([Buffer.from([255, 250, 24, 0]), Buffer.from('ANSI-BBS', 'latin1'), Buffer.from([255, 240])])
+        );
+      }
+    });
+  });
+}
+
 async function main() {
   const tmpData = path.join(ROOT, 'test', '.tmp-data');
   fs.rmSync(tmpData, { recursive: true, force: true });
@@ -175,6 +209,20 @@ async function main() {
   check('board writes the logon screen over the socket', wsr.text.length > 40, `${wsr.text.length} chars`);
   check('a silent socket is kept warm with protocol pings', wsr.pings >= 1, `${wsr.pings} ping(s)`);
   check('a NUL-prefixed control frame is never typed at the board', !wsr.text.includes('ZZPINGZZ'));
+
+  const tn = await telnetProbe();
+  check(
+    'the first screen names the board and its software',
+    /MIDNIGHT GATE[\s\S]{0,60}GATE BBS/.test(tn.text.slice(0, 400)),
+    (tn.text.slice(0, 400).match(/MIDNIGHT GATE.{0,40}/) || [''])[0].trim()
+  );
+  check(
+    'telnet speaks CP437, not UTF-8, for art',
+    !tn.bytes.includes(Buffer.from([0xe2, 0x95])) && /[\u2554\u2550\u2588]/.test(tn.text),
+    `${tn.bytes.filter((b) => b > 0x7f).length} high byte(s)`
+  );
+  check('board asks for the terminal type once the caller agrees', tn.askedType);
+  check('board records the terminal type it was told', /telnet terminal: ANSI-BBS/.test(log));
 
   const audio = await fetch(BASE + '/audio/dialup.mp3');
   const audioType = audio.headers.get('content-type') || '';

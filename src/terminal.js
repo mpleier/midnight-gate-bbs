@@ -55,6 +55,8 @@ class Terminal extends EventEmitter {
     this.cols = opts.cols || 80;
     this.rows = opts.rows || 25;
     this.ansi = opts.ansi !== false;
+    // what the client says it is (RFC 1091 TERMINAL-TYPE), if it says anything
+    this.terminalType = opts.terminalType || '';
     this.carrier = true;
     this.connectedAt = Date.now();
     this.lastActivity = Date.now();

@@ -63,6 +63,9 @@ class Nodes {
         minutes: Math.max(0, Math.floor((Date.now() - t.connectedAt) / 60000)),
         location: t.user ? [t.user.city, t.user.state].filter(Boolean).join(', ') : 'Unknown',
         level: t.user ? t.user.level : 0,
+        // which terminal is calling: the web terminal is always xterm.js, a
+        // telnet caller only says so when it answers TERMINAL-TYPE
+        terminal: t.terminalType || (t.kind === 'web' ? 'xterm.js' : ''),
         bot: !!t.bot,
       }))
       .sort((a, b) => a.node - b.node);

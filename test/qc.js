@@ -4,6 +4,7 @@
 // input edge cases and node limits. Prints a table; exits non-zero on failure.
 const net = require('node:net');
 const fs = require('node:fs');
+const cp437 = require('../src/cp437');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
@@ -23,7 +24,7 @@ function connect() {
   return new Promise((resolve, reject) => {
     const sock = net.connect(TELNET_PORT, '127.0.0.1');
     const s = { sock, out: '', pos: 0 };
-    sock.on('data', (d) => (s.out += d.toString('utf8')));
+    sock.on('data', (d) => (s.out += cp437.decode(d)));
     sock.on('error', reject);
     sock.on('close', () => (s.closed = true));
     sock.on('connect', () => resolve(s));
